@@ -1,0 +1,15 @@
+.logo {
+    max-width: 100px;
+    height: auto;
+}
+
+.text-chocolate {
+    color: #d2691e;
+}
+
+.tengah {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}

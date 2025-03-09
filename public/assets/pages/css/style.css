@@ -1,0 +1,95 @@
+body {
+  font-family: "Assistant", sans-serif;
+  color: #071c4d;
+}
+
+.border-bottom1 {
+  border-bottom: 3px solid chocolate;
+}
+
+.navbar-brand {
+  font-weight: bold;
+  color: #8B4413
+}
+.navbar-brand:hover {
+  color: #833c09
+}
+
+.navbar-light .navbar-nav .nav-link {
+  color: #8B4413;
+}
+
+.navbar-light .navbar-nav .nav-link:hover {
+  font-weight: bold;
+  color: #833c09;
+}
+
+.navbar-light .navbar-nav .nav-link.active, .active {
+  font-weight: bold;
+  color: #833c09 !important;
+}
+
+.nav-link{
+  color: #8B4413;
+}
+
+.dropdown-menu {
+  background-color: #ffffff;
+}
+
+.dropdown-item {
+  color: #8B4413;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+header {
+  padding: 70px 0 165px;
+  background-image: url("../img/gedung.jpg");
+  background-size: cover;
+  background-position: center;
+  border-right: 3px solid chocolate;
+  border-bottom: 3px solid chocolate;
+  border-left: 3px solid chocolate;
+}
+
+header h1,
+header p {
+  color: #fff;
+  text-shadow: 0px 0px 6px #000;
+}
+
+header h1 {
+  font-family: "Playfair Display", serif;
+  font-weight: bold;
+  font-size: 30px;
+}
+
+header p {
+  font-size: 18px;
+}
+
+.btn-get-started {
+  background-color: #8B4413;
+  color: #fff;
+}
+
+.btn-get-started:hover {
+  background-color: #b95813;
+  color: #fff;
+}
+
+.footer-text{
+  color: #8B4413;
+}
+
+.border-top1{
+  border-top: 3px solid chocolate;
+}
+
+.bg-chocolate{
+  background-color: #8B4413;
+  color: white;
+}
