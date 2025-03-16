@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\JadwalIbadah;
 use App\Models\Renungan;
 use App\Models\Pendeta;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class PageController extends Controller
 {
@@ -19,7 +24,7 @@ class PageController extends Controller
         $jadwalIbadah = JadwalIbadah::get();
         return view('pages.jadwal-ibadah', compact('jadwalIbadah'));
     }
-    
+
     public function renungan()
     {
         $renungan = Renungan::take(3)->orderBy('created_at', 'desc')->get(); // Mengambil 3 renungan pertama
@@ -48,5 +53,90 @@ class PageController extends Controller
     {
         $pengurus = Pendeta::get();
         return view('pages.info', compact('pengurus'));
+    }
+
+    public function register(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required',
+            'email' => 'required|unique:users,email',
+            'password' => 'required|min:8',
+        ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique' => 'Email sudah digunakan.',
+            'password.min' => 'Password wajib memiliki minimal 8 karakter.',
+        ]);
+
+        try {
+            User::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'password' => Hash::make($validatedData['password']),
+            ]);
+
+            return redirect()->route('pages.login')
+                ->with('success', 'Registrasi berhasil. Silakan login.');
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['message' => 'Terjadi kesalahan saat menyimpan data']);
+        }
+    }
+
+    public function login(Request $request)
+    {
+        $credentials = $request->only('email', 'password');
+
+        if (Auth::guard('users')->attempt($credentials)) {
+            return redirect()->route('beranda');
+        }
+
+        return redirect()->back()->withErrors(['message' => 'Email atau password salah']);
+    }
+
+    public function logout()
+    {
+        Auth::guard('users')->logout();
+
+        return redirect()->route('beranda');
+    }
+
+    public function profilPage()
+    {
+        $user = Auth::user();
+
+        return view('pages.profil', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $data = Auth::user();
+
+        $user = User::findOrFail($data->id);
+
+        $validatedData = $request->validate([
+            'name'  => 'required|max:80',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|min:8'
+        ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique' => 'Email sudah digunakan.',
+            'password.min' => 'Password wajib memiliki minimal 8 karakter.',
+        ]);
+
+        $user->name  = $validatedData['name'];
+        $user->email = $validatedData['email'];
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->input('password'));
+        }
+
+        $user->save();
+
+        return redirect()->route('profil')->with('success', 'Profil berhasil diperbaharui.');
     }
 }

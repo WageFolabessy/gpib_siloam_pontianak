@@ -27,18 +27,18 @@
                             </div>
                         @endif
                         <div class="card-body text-center">
-                            <form method="POST" action="{{ route('admin.login.submit') }}" class="w-100">
+                            <form method="POST" action="{{ route('login_jemaat') }}" class="w-100">
                                 @csrf
                                 <div class="form-group">
-                                    <label for="username" class="sr-only">Username:</label>
+                                    <label for="email" class="sr-only">Email:</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text h-100">
                                                 <i class="fas fa-user"></i>
                                             </span>
                                         </div>
-                                        <input type="text" class="form-control" id="username" name="username"
-                                            placeholder="Enter your username" autocomplete="username" />
+                                        <input type="email" class="form-control" id="email" name="email"
+                                            placeholder="Enter your email" autocomplete="email" />
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -59,7 +59,12 @@
                             </form>
                         </div>
                         <div class="card-footer bg-white text-center">
-                            <p class="mb-1">Admin Dashboard</p>
+                            <p class="mb-1">
+                                Belum punya akun? <a href="{{ route('pages.register') }}">Daftar</a>
+                            </p>
+                            <p class="mb-0">
+                                Lupa password? <a href="{{ route('pages.request_password') }}">Reset Password</a>
+                            </p>
                         </div>
                     </div>
                 </div>

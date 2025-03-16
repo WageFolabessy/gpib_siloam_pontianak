@@ -9,7 +9,7 @@ class AdminAuthController extends Controller
 {
     public function index()
     {
-        if (Auth::check()) {
+        if (Auth::guard('admin_users')->check()) {
             return redirect()->route('dashboard.index');
         }
         return view('auth.login');
@@ -19,19 +19,17 @@ class AdminAuthController extends Controller
     {
         $credentials = $request->only('username', 'password');
 
-        if (Auth::attempt($credentials)) {
-            // Authentication passed...
-            return redirect()->intended('/dashboard'); // Redirect to the intended page after successful login
+        if (Auth::guard('admin_users')->attempt($credentials)) {
+            return redirect()->intended('/dashboard');
         }
 
-        // Authentication failed...
         return redirect()->back()->withErrors(['message' => 'username atau password salah']);
     }
 
     public function logout()
     {
-        Auth::logout();
+        Auth::guard('admin_users')->logout();
 
-        return redirect('/');
+        return redirect()->route('admin.login');
     }
 }

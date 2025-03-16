@@ -16,8 +16,8 @@
     <!-- Akhir COVER -->
 
     <!-- RENUNGAN -->
-    <div class="container mt-4">
-        @if (!empty($renungan))
+    @if (!empty($renungan))
+        <div class="container mt-4">
             <h1 class="text-center mb-4">Renungan Terbaru</h1>
             <div class="row justify-content-start">
                 @foreach ($renungan as $data)
@@ -36,8 +36,8 @@
                     </div>
                 @endforeach
             </div>
-        @endif
-    </div>
+        </div>
+    @endif
     <!-- AKHIR RENUNGAN -->
 @endsection
 

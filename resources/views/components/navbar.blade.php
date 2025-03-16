@@ -24,16 +24,42 @@
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link {{ request()->is('info') ? 'active' : '' }} dropdown-toggle" href="#"
-                        role="button" data-bs-toggle="dropdown" aria-expanded="false">Tentang Gereja</a>
+                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Tentang Gereja
+                    </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ url('info') }}">Info</a></li>
                     </ul>
                 </li>
+                @if (Auth::user())
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Profil
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url('profil') }}">Profil Saya</a></li>
+                            <li>
+                                <form method="POST" action="{{ route('jemaat_logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item"
+                                        style="border: none; background: none; cursor: pointer;">
+                                        Keluar
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <a class="btn btn-primary" href="{{ route('pages.login') }}">Masuk</a>
+                    </li>
+                @endif
+                <!-- Tombol toggle untuk speech synthesis -->
+                <li class="nav-item ms-2">
+                    <a id="btnToggleSpeech" class="btn btn-secondary" href="#" type="button"></a>
+                </li>
             </ul>
-            <div class="d-flex align-items-center ms-3">
-                <!-- Satu tombol toggle untuk speech synthesis -->
-                <button id="btnToggleSpeech" class="btn"></button>
-            </div>
         </div>
     </div>
 </nav>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GPIB SILOAM PONTIANAK - Login</title>
+    <title>GPIB SILOAM PONTIANAK - Request Password</title>
     <link rel="shortcut icon" href="{{ asset('assets/pages/img/logo.png') }}" />
     <link rel="stylesheet" href="{{ asset('assets/pages/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/pages/css/auth.css') }}" />
@@ -21,45 +21,44 @@
                             <img src="{{ asset('assets/pages/img/logo.png') }}" alt="Logo" class="logo" />
                             <h1 class="mt-3 text-dark">GPIB SILOAM PONTIANAK</h1>
                         </div>
-                        @if ($errors->has('message'))
+                        @if ($errors->any())
                             <div class="alert alert-danger m-3">
-                                {{ $errors->first('message') }}
+                                <ul class="mb-0">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                        @if (session('status'))
+                            <div class="alert alert-success m-3">
+                                {{ session('status') }}
                             </div>
                         @endif
                         <div class="card-body text-center">
-                            <form method="POST" action="{{ route('admin.login.submit') }}" class="w-100">
+                            <form method="POST" action="{{ route('password.email') }}" class="w-100">
                                 @csrf
                                 <div class="form-group">
-                                    <label for="username" class="sr-only">Username:</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text h-100">
-                                                <i class="fas fa-user"></i>
-                                            </span>
-                                        </div>
-                                        <input type="text" class="form-control" id="username" name="username"
-                                            placeholder="Enter your username" autocomplete="username" />
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="password" class="sr-only">Password:</label>
+                                    <label for="email" class="sr-only">Email:</label>
                                     <div class="input-group mt-4">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text h-100">
-                                                <i class="fas fa-lock"></i>
+                                                <i class="fas fa-envelope"></i>
                                             </span>
                                         </div>
-                                        <input type="password" class="form-control" id="password" name="password"
-                                            placeholder="Enter your password" autocomplete="current-password" />
+                                        <input type="email" class="form-control" id="email" name="email"
+                                            placeholder="Masukan email anda yang terdaftar" autocomplete="email" />
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-block mt-4">
-                                    Login
+                                    Kirim Link Reset Password
                                 </button>
                             </form>
                         </div>
                         <div class="card-footer bg-white text-center">
-                            <p class="mb-1">Admin Dashboard</p>
+                            <p class="mb-1">
+                                Ingat password? <a href="{{ route('pages.login') }}">Masuk</a>
+                            </p>
                         </div>
                     </div>
                 </div>
