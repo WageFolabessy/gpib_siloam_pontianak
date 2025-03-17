@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="garisAs" content="projek">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>GPIB SILOAM PONTIANAK @yield('title')</title>
     <link rel="shortcut icon" href="{{ asset('assets/pages/img/logo.png') }}">
     <link rel="stylesheet" href="{{ asset('assets/pages/css/bootstrap.min.css') }}">
@@ -41,6 +42,8 @@
     <div class="alert alert-info text-center mb-0">
         Website ini dilengkapi dengan fitur <strong>speech synthesis</strong> dan <strong>speech recognition</strong>.
         <br>
+        Izinkan microphone untuk menggunakan fitur <strong>speech recognition</strong>.
+        <br>
         Anda dapat berpindah halaman dengan perintah suara, contohnya:
         <em>"Buka halaman beranda"</em>, "Buka halaman jadwal ibadah"</em>, <em>"Buka halaman renungan"</em>, atau
         <em>"Buka halaman info"</em>.
@@ -67,33 +70,56 @@
     <script src="{{ asset('assets/pages/js/chat/chat-user.js') }}"></script>
 
     <script type="module">
-        // Mendengarkan event broadcast untuk pesan user
-        Echo.channel("chat-room").listen("UserMessageSent", (e) => {
-            if (e.message.user_id && e.message.user_id === userId) {
-                // Jika pesan yang diterima sama dengan pesan template yang baru saja ditampilkan,
-                // abaikan agar tidak tampil ganda, lalu reset flag-nya
-                if (lastTemplateQuestion && e.message.message === lastTemplateQuestion) {
-                    lastTemplateQuestion = "";
-                    return;
-                }
-                console.log("Pesan user diterima:", e.message);
-                appendMessageToChat(e.message.message, "user", e.message.timestamp, true, {
-                    user_id: e.message.user_id,
-                });
+        @if (Auth::check())
+            window.userId = "{{ Auth::user()->id }}";
+            window.userName = "Anda";
+        @else
+            let tempUserId = localStorage.getItem("userId");
+            if (!tempUserId) {
+                tempUserId = "user_" + Math.random().toString(36).substring(2, 10);
+                localStorage.setItem("userId", tempUserId);
+            }
+            window.userId = tempUserId;
+            window.userName = "";
+        @endif
+
+        window.sentMessageIds = new Set();
+
+        Echo.channel("chat-room").listen("AdminMessageSent", (event) => {
+            if (event.message.target && String(event.message.target) === String(window.userId)) {
+                appendMessageToChat(
+                    event.message.message,
+                    "admin",
+                    event.message.timestamp,
+                    true, {
+                        target: event.message.target
+                    }
+                );
+            } else {
+                console.warn("Admin message target mismatch.", event.message.target, window.userId);
             }
         });
 
-        // Mendengarkan event broadcast untuk pesan admin
-        Echo.channel("chat-room").listen("AdminMessageSent", (e) => {
-            // Tampilkan pesan admin jika target sesuai dengan userId
-            if (e.message.target && e.message.target === userId) {
-                console.log("Pesan admin diterima:", e.message);
-                appendMessageToChat(e.message.message, "admin", e.message.timestamp, true, {
-                    target: e.message.target
-                });
+        Echo.channel("chat-room").listen("UserMessageSent", (event) => {
+            if (event.message.client_message_id && window.sentMessageIds.has(event.message.client_message_id)) {
+                window.sentMessageIds.delete(event.message.client_message_id);
+                return;
+            }
+            const payloadUserId = event.message.user_id || window.userId;
+            if (String(payloadUserId) === String(window.userId)) {
+                appendMessageToChat(
+                    event.message.message,
+                    "user",
+                    event.message.timestamp,
+                    true, {
+                        user_id: payloadUserId,
+                        user_name: event.message.user_name
+                    }
+                );
             }
         });
     </script>
+
     @yield('script')
 
 </body>

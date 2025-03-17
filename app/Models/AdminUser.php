@@ -19,4 +19,9 @@ class AdminUser extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function sentChats()
+    {
+        return $this->morphMany(Chat::class, 'sender');
+    }
 }

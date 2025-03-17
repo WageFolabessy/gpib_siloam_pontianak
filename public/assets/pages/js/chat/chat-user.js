@@ -1,120 +1,193 @@
-// Jika belum ada userId, generate dan simpan di localStorage
-let userId = localStorage.getItem("userId");
-if (!userId) {
-    userId = "user_" + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem("userId", userId);
+if (typeof window.userId === "undefined") {
+    let tempUser = localStorage.getItem("userId");
+    if (!tempUser) {
+        tempUser = "user_" + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem("userId", tempUser);
+    }
+    window.userId = tempUser;
 }
 
-// Fungsi untuk menyimpan pesan ke localStorage (termasuk user_id bila ada)
-function saveMessage(data) {
-    let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-    messages.push(data);
+const csrfToken = document
+    .querySelector('meta[name="csrf-token"]')
+    .getAttribute("content");
+
+/**
+ * Simpan pesan ke localStorage.
+ */
+function saveMessage(message) {
+    const messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+    messages.push(message);
     localStorage.setItem("chatMessages", JSON.stringify(messages));
 }
 
-// Fungsi untuk menampilkan pesan ke chat
+function markMessageAsRead(messageId, buttonElement) {
+    fetch(`/chat/mark-read/${messageId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+            Accept: "application/json",
+        },
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            console.log(data.message);
+            // Ubah tampilan tombol menjadi label "Read"
+            if (buttonElement) {
+                buttonElement.textContent = "Read";
+                buttonElement.style.pointerEvents = "none";
+            }
+        })
+        .catch((err) => console.error("Error marking message as read:", err));
+}
+
+/**
+ * Append pesan ke elemen DOM chat.
+ */
 function appendMessageToChat(
-    message,
+    messageContent,
     sender,
     timestamp = new Date().toISOString(),
-    save = true,
+    store = true,
     extra = {}
 ) {
-    const chatMessagesEl = document.getElementById("chatMessages");
-    const messageEl = document.createElement("div");
-    messageEl.classList.add("d-flex", "mb-2");
+    const chatContainer = document.getElementById("chatMessages");
+    const messageElement = document.createElement("div");
 
     if (sender === "admin") {
-        messageEl.innerHTML = `
+        messageElement.classList.add("d-flex", "mb-2");
+        messageElement.innerHTML = `
             <span class="fw-bold me-2" style="min-width:70px">Admin</span>
-            <div class="p-2 bg-light rounded" style="max-width:75%;">${message}</div>
+            <div class="p-2 bg-light rounded" style="max-width:75%;">${messageContent}</div>
         `;
     } else {
-        // Untuk user, tampilkan di sebelah kanan
-        messageEl.classList.add("flex-row-reverse");
-        messageEl.innerHTML = `
-            <span class="fw-bold ms-2" style="min-width:70px">Anda</span>
-            <div class="p-2 bg-primary text-white rounded" style="max-width:75%;">${message}</div>
+        messageElement.classList.add("d-flex", "mb-2", "flex-row-reverse");
+        const displayName = extra.user_name || "Anda";
+        messageElement.innerHTML = `
+            <span class="fw-bold ms-2" style="min-width:70px">${displayName}</span>
+            <div class="p-2 bg-primary text-white rounded" style="max-width:75%;">${messageContent}</div>
         `;
     }
-    chatMessagesEl.appendChild(messageEl);
+    chatContainer.appendChild(messageElement);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    if (save) {
-        // Buat objek pesan baru
-        const newMessage = {
-            id: Date.now(),
-            sender,
-            message,
-            timestamp,
+    if (store) {
+        const messageData = {
+            message_id: extra.client_message_id || Date.now(),
+            sender: sender,
+            message: messageContent,
+            timestamp: timestamp,
         };
+        if (extra.user_id) messageData.user_id = extra.user_id;
+        if (extra.target) messageData.target = extra.target;
+        if (extra.user_name) messageData.user_name = extra.user_name;
+        if (extra.template) messageData.template = true;
 
-        // Sertakan properti tambahan jika ada (misalnya user_id, target, atau template)
-        if (extra.user_id) newMessage.user_id = extra.user_id;
-        if (extra.target) newMessage.target = extra.target;
-        if (extra.template) newMessage.template = true;
-
-        // Ambil pesan yang sudah tersimpan
-        let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-
-        // Cek duplikasi secara konten jika pesan template (flag template true)
-        if (newMessage.template) {
-            const duplicate = messages.some((msg) => {
-                return (
-                    msg.sender === newMessage.sender &&
-                    msg.message === newMessage.message &&
-                    msg.template
-                );
-            });
-            if (duplicate) {
-                // Jika sudah ada pesan template dengan konten yang sama, jangan simpan lagi
-                return;
+        const storedMessages =
+            JSON.parse(localStorage.getItem("chatMessages")) || [];
+        // Cegah duplikasi berdasarkan client_message_id atau pesan serupa dalam waktu singkat
+        if (extra.client_message_id) {
+            if (
+                !storedMessages.some(
+                    (m) => m.message_id === extra.client_message_id
+                )
+            ) {
+                storedMessages.push(messageData);
             }
         } else {
-            // Cek duplikasi berdasarkan sender, message, dan timestamp (toleransi 2 detik)
-            const duplicate = messages.some((msg) => {
-                return (
-                    msg.sender === newMessage.sender &&
-                    msg.message === newMessage.message &&
-                    Math.abs(
-                        new Date(msg.timestamp) - new Date(newMessage.timestamp)
-                    ) < 2000
-                );
-            });
-            if (duplicate) {
-                return;
+            if (
+                !storedMessages.some(
+                    (m) =>
+                        m.sender === sender &&
+                        m.message === messageContent &&
+                        Math.abs(new Date(m.timestamp) - new Date(timestamp)) <
+                            2000
+                )
+            ) {
+                storedMessages.push(messageData);
             }
         }
-
-        messages.push(newMessage);
-        localStorage.setItem("chatMessages", JSON.stringify(messages));
-        // Jika diperlukan, update DataTable atau chat list
-        // loadChatTable();
+        localStorage.setItem("chatMessages", JSON.stringify(storedMessages));
     }
 }
 
+/**
+ * Load pesan dari localStorage dan tampilkan ke UI.
+ */
 function loadChatMessages() {
-    document.getElementById("chatMessages").innerHTML = "";
-    (JSON.parse(localStorage.getItem("chatMessages")) || []).forEach((msg) => {
-        appendMessageToChat(msg.message, msg.sender, msg.timestamp, false);
-    });
+    fetch("/user/messages", {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+        },
+    })
+        .then((response) => response.json())
+        .then((messages) => {
+            // Kosongkan container pesan
+            const container = document.getElementById("chatMessages");
+            container.innerHTML = "";
+            // Tampilkan masing-masing pesan
+            messages.forEach((msg) => {
+                // Gunakan msg.created_at sebagai timestamp. Jika diperlukan, konversi ke ISO string.
+                // Gunakan msg.sender_type untuk menentukan tampilan pesan.
+                const sender = msg.sender_type === "admin" ? "admin" : "user";
+                const userName = sender === "admin" ? "Admin" : msg.user_name;
+                appendMessageToChat(
+                    msg.message,
+                    sender,
+                    msg.created_at,
+                    false,
+                    {
+                        user_id: msg.user_id,
+                        user_name: userName,
+                        client_message_id: msg.client_message_id,
+                    }
+                );
+            });
+        })
+        .catch((err) => {
+            console.error("Error loading chat messages:", err);
+        });
 }
 
-// Inisialisasi modal chat
-$("#chatModal").on("shown.bs.modal", function () {
-    loadChatMessages();
-});
-
-// Fungsi untuk mengirim pesan user
+/**
+ * Kirim pesan user ke server.
+ */
 function sendUserMessage() {
     const chatInput = document.getElementById("chatInput");
-    const text = chatInput.value.trim();
-    if (text !== "") {
-        fetch(
-            "/send-user-message?message=" +
-                encodeURIComponent(text) +
-                "&user_id=" +
-                encodeURIComponent(userId)
-        )
+    const messageText = chatInput.value.trim();
+    if (messageText !== "") {
+        // Buat client_message_id unik
+        const clientMessageId =
+            Date.now() + "_" + Math.random().toString(36).substring(2, 10);
+        window.sentMessageIds.add(clientMessageId);
+
+        // Optimistic UI update
+        appendMessageToChat(
+            messageText,
+            "user",
+            new Date().toISOString(),
+            true,
+            {
+                user_id: window.userId,
+                client_message_id: clientMessageId,
+            }
+        );
+
+        fetch("/send-user-message", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({
+                message: messageText,
+                user_id: window.userId,
+                client_message_id: clientMessageId,
+            }),
+        })
             .then((response) => response.json())
             .then((data) => {
                 console.log(data.message);
@@ -124,23 +197,12 @@ function sendUserMessage() {
     }
 }
 
-// Mengirim pesan user dengan tombol kirim
-document.getElementById("sendChat").addEventListener("click", sendUserMessage);
-
-// Mengirim pesan user saat menekan tombol Enter di input chat
-document.getElementById("chatInput").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-        e.preventDefault(); // mencegah newline jika diperlukan
-        sendUserMessage();
-    }
-});
-
-let lastTemplateQuestion = "";
-
-// Fungsi untuk memuat template tanya jawab dari server dan menampilkannya di modal chat
+/**
+ * Load template pertanyaan dan jawaban.
+ */
 function loadTemplateTanyaJawab() {
     fetch("/template_tanya_jawab")
-        .then((response) => response.json())
+        .then((res) => res.json())
         .then((templates) => {
             const container = document.getElementById("templateTanyaJawab");
             container.innerHTML = "<h6>Pertanyaan Template:</h6>";
@@ -148,68 +210,108 @@ function loadTemplateTanyaJawab() {
                 const btn = document.createElement("button");
                 btn.classList.add("btn", "btn-outline-primary", "m-1");
                 btn.textContent = template.pertanyaan;
-                // Event ketika template diklik
-                btn.addEventListener("click", function () {
-                    const ts = new Date().toISOString();
+                btn.addEventListener("click", () => {
+                    const timestamp = new Date().toISOString();
+                    // Buat client_message_id agar pesan template tidak di-append ulang saat event broadcast datang
+                    const clientMsgId =
+                        Date.now() +
+                        "_" +
+                        Math.random().toString(36).substring(2, 10);
+                    window.sentMessageIds.add(clientMsgId);
 
-                    // Tampilkan pesan pertanyaan secara manual dan simpan ke localStorage (save=true)
-                    lastTemplateQuestion = template.pertanyaan;
+                    // Tampilkan pesan template sebagai pesan user di chat beserta client_message_id
                     appendMessageToChat(
                         template.pertanyaan,
                         "user",
-                        ts,
-                        true, // simpan ke localStorage
-                        { user_id: userId, template: true }
+                        timestamp,
+                        true,
+                        {
+                            user_id: window.userId,
+                            user_name: window.userName,
+                            template: true,
+                            client_message_id: clientMsgId,
+                        }
                     );
 
-                    // Kirim pesan pertanyaan ke server (untuk broadcast ke admin)
-                    fetch(
-                        "/send-user-message?message=" +
-                            encodeURIComponent(template.pertanyaan) +
-                            "&user_id=" +
-                            encodeURIComponent(userId)
-                    )
-                        .then((response) => response.json())
+                    // Kirim pesan user ke endpoint send-user-message dengan client_message_id-nya
+                    fetch("/send-user-message", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken,
+                            Accept: "application/json",
+                        },
+                        body: JSON.stringify({
+                            message: template.pertanyaan,
+                            user_id: window.userId,
+                            client_message_id: clientMsgId,
+                        }),
+                    })
+                        .then((res) => res.json())
                         .then((data) => {
                             console.log("Pertanyaan terkirim:", data.message);
                         })
-                        .catch((error) =>
-                            console.error("Error mengirim pertanyaan:", error)
+                        .catch((err) =>
+                            console.error("Error mengirim pertanyaan:", err)
                         );
 
-                    // Tunda pengiriman pesan jawaban agar pertanyaan tampil dulu
+                    // Setelah 1 detik, kirim jawaban template ke endpoint send-admin-template
                     setTimeout(() => {
-                        fetch(
-                            "/send-admin-message?message=" +
-                                encodeURIComponent(template.jawaban) +
-                                "&target=" +
-                                encodeURIComponent(userId)
-                        )
-                            .then((response) => response.json())
+                        fetch("/send-admin-template", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": csrfToken,
+                                Accept: "application/json",
+                            },
+                            body: JSON.stringify({
+                                message: template.jawaban,
+                                target: window.userId,
+                                // client_message_id bisa ditambahkan kalau diperlukan
+                            }),
+                        })
+                            .then((res) => res.json())
                             .then((data) => {
                                 console.log("Jawaban terkirim:", data.message);
                             })
-                            .catch((error) => {
-                                console.error("Error mengirim jawaban:", error);
-                                // Jika terjadi error, sebagai fallback tampilkan jawaban secara manual
+                            .catch((err) => {
+                                console.error("Error mengirim jawaban:", err);
+                                // Jika terjadi error, tampilkan jawaban secara manual
                                 appendMessageToChat(
                                     template.jawaban,
                                     "admin",
                                     new Date().toISOString(),
                                     true,
-                                    { target: userId, template: true }
+                                    {
+                                        target: window.userId,
+                                        template: true,
+                                    }
                                 );
                             });
-                    }, 1000); // delay 1 detik
+                    }, 1000);
                 });
                 container.appendChild(btn);
             });
         })
-        .catch((error) => console.error("Error fetching templates:", error));
+        .catch((err) => console.error("Error fetching templates:", err));
 }
 
-// Panggil loadTemplateTanyaJawab ketika modal chat ditampilkan
-$("#chatModal").on("shown.bs.modal", function () {
+// Ketika modal chat terbuka, load pesan dan template
+$("#chatModal").on("shown.bs.modal", () => {
     loadChatMessages();
     loadTemplateTanyaJawab();
+});
+
+$("#chatModal").on("hidden.bs.modal", function () {
+    // Hapus fokus dari elemen yang masih aktif di dalam modal
+    $(this).find(":focus").blur();
+});
+
+// Event listener untuk tombol kirim dan input enter
+document.getElementById("sendChat").addEventListener("click", sendUserMessage);
+document.getElementById("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendUserMessage();
+    }
 });

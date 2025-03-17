@@ -90,7 +90,7 @@
                                 Sudah punya akun? <a href="{{ route('pages.login') }}">Masuk</a>
                             </p>
                             <p class="mb-0">
-                                Lupa password? <a href="{{ route('pages.reset_password') }}">Reset Password</a>
+                                Lupa password? <a href="{{ route('pages.request_password') }}">Reset Password</a>
                             </p>
                         </div>
                     </div>

@@ -14,12 +14,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectGuestsTo(function (Request $request) {
-            // Jika URL mengarah ke dashboard (atau sub-path-nya), arahkan ke halaman admin login
             if ($request->is('dashboard') || $request->is('dashboard/*')) {
                 return route('admin.login');
             }
-            // Defaultnya untuk pengguna jemaat
             return route('pages.login');
+        });
+        $middleware->redirectUsersTo(function (Request $request): string {
+            if (auth()->guard('admin_users')->check()) {
+                return 'dashboard';
+            }
+
+            return '/';
         });
     })
     ->withExceptions(function (Exceptions $exceptions) {

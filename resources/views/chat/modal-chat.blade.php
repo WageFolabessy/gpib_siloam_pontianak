@@ -7,6 +7,17 @@
                     aria-label="Close"></button>
             </div>
             <div class="modal-body p-3">
+                {{-- Jika pengguna belum login, tampilkan peringatan --}}
+                @if (!Auth::check())
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        Untuk menggunakan fitur chat lengkap dan untuk menyimpan chat, silakan
+                        <a href="{{ route('pages.login') }}" class="alert-link">login</a>.
+                        Jika tidak, Anda hanya dapat mengirim pesan template saja dan chat Anda hanya tersimpan
+                        sementara dan akan hilang setelah menutup chat.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
                 <!-- Area Chat: Pesan akan ditampilkan di sini -->
                 <div id="chatMessages">
                     <!-- Pesan akan di-load dari localStorage via JS -->
@@ -16,12 +27,15 @@
                     <!-- Template akan di-load secara dinamis -->
                 </div>
             </div>
-            <div class="modal-footer">
-                <div class="input-group">
-                    <input type="text" id="chatInput" class="form-control" placeholder="Ketik pesan Anda...">
-                    <button type="button" class="btn btn-primary" id="sendChat">Kirim</button>
+            @if (Auth::check())
+                <div class="modal-footer">
+                    <div class="input-group">
+                        <input type="text" id="chatInput" class="form-control" placeholder="Ketik pesan Anda...">
+                        <button type="button" class="btn btn-primary" id="sendChat">Kirim</button>
+                    </div>
                 </div>
-            </div>
+            @endif
+
         </div>
     </div>
 </div>

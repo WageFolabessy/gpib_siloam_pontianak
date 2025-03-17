@@ -28,7 +28,7 @@ Route::middleware('guest:users')->group(function () {
         ->name('password.email');
 
     Route::get('/password/reset/{token}', [PasswordResetController::class, 'showResetForm'])
-    ->name('password.reset');
+        ->name('password.reset');
 
     Route::post('/reset_password', [PasswordResetController::class, 'reset'])
         ->name('password.update');
@@ -55,10 +55,31 @@ Route::middleware('auth:users')->group(function () {
     Route::put('/profil/update', [PageController::class, 'updateProfile'])->name('profil.update');
 });
 
-Route::get('send-user-message', [ChatController::class, 'sendUserMessage']);
-Route::get('send-admin-message', [ChatController::class, 'sendAdminMessage']);
+Route::post('send-user-message', [ChatController::class, 'sendUserMessage'])
+    ->name('chat.user.send');
+
+Route::middleware('auth:admin_users')->group(function () {
+    Route::post('send-admin-message', [ChatController::class, 'sendAdminMessage'])
+        ->name('chat.admin.send');
+
+    Route::get('admin/messages/{userId}', [ChatController::class, 'getUserMessages'])
+        ->name('chat.admin.getMessages');
+
+    Route::get('get-chat-users', [ChatController::class, 'getChatUsers'])
+        ->name('chat.users');
+
+    Route::get('dashboard/chat', [ChatController::class, 'index'])
+        ->name('dashboard.chat');
+});
+
+Route::get('user/messages', [ChatController::class, 'getMessagesForUser'])
+    ->name('chat.user.getMessages');
+
 Route::get('template_tanya_jawab', [ChatController::class, 'templateTanyaJawab']);
-Route::get('dashboard/chat', [ChatController::class, 'chatIndex'])->name('dashboard.chat');
+
+Route::post('send-admin-template', [ChatController::class, 'sendAdminTemplate'])
+    ->name('chat.admin.template');
+
 
 Route::middleware('guest:admin_users')->group(function () {
     Route::get('/admin/login', [AdminAuthController::class, 'index'])->name('admin.login');
