@@ -20,7 +20,7 @@
 
                 <!-- Area Chat: Pesan akan ditampilkan di sini -->
                 <div id="chatMessages"
-                    style="max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                    style="max-height: 400px; overflow-y: auto; background: #eaeaea; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px;">
                     <!-- Pesan akan di-load dari localStorage via JS -->
                 </div>
                 <!-- Container untuk daftar template tanya jawab -->
