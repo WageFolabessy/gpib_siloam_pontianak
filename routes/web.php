@@ -80,7 +80,6 @@ Route::get('template_tanya_jawab', [ChatController::class, 'templateTanyaJawab']
 Route::post('send-admin-template', [ChatController::class, 'sendAdminTemplate'])
     ->name('chat.admin.template');
 
-
 Route::middleware('guest:admin_users')->group(function () {
     Route::get('/admin/login', [AdminAuthController::class, 'index'])->name('admin.login');
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');

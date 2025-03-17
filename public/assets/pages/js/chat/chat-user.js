@@ -202,26 +202,24 @@ function sendUserMessage() {
  */
 function loadTemplateTanyaJawab() {
     fetch("/template_tanya_jawab")
-        .then((res) => res.json())
-        .then((templates) => {
-            const container = document.getElementById("templateTanyaJawab");
-            container.innerHTML = "<h6>Pertanyaan Template:</h6>";
-            templates.forEach((template) => {
+        .then((response) => response.json())
+        .then((data) => {
+            const templateContainer =
+                document.getElementById("templateTanyaJawab");
+            templateContainer.innerHTML = "<h6>Pertanyaan Template:</h6>";
+            data.forEach((item) => {
                 const btn = document.createElement("button");
                 btn.classList.add("btn", "btn-outline-primary", "m-1");
-                btn.textContent = template.pertanyaan;
-                btn.addEventListener("click", () => {
+                btn.textContent = item.pertanyaan;
+                btn.addEventListener("click", function () {
                     const timestamp = new Date().toISOString();
-                    // Buat client_message_id agar pesan template tidak di-append ulang saat event broadcast datang
-                    const clientMsgId =
+                    const clientMessageId =
                         Date.now() +
                         "_" +
                         Math.random().toString(36).substring(2, 10);
-                    window.sentMessageIds.add(clientMsgId);
-
-                    // Tampilkan pesan template sebagai pesan user di chat beserta client_message_id
+                    // Tampilkan pertanyaan template sebagai pesan user
                     appendMessageToChat(
-                        template.pertanyaan,
+                        item.pertanyaan,
                         "user",
                         timestamp,
                         true,
@@ -229,68 +227,98 @@ function loadTemplateTanyaJawab() {
                             user_id: window.userId,
                             user_name: window.userName,
                             template: true,
-                            client_message_id: clientMsgId,
+                            client_message_id: clientMessageId,
                         }
                     );
 
-                    // Kirim pesan user ke endpoint send-user-message dengan client_message_id-nya
-                    fetch("/send-user-message", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": csrfToken,
-                            Accept: "application/json",
-                        },
-                        body: JSON.stringify({
-                            message: template.pertanyaan,
-                            user_id: window.userId,
-                            client_message_id: clientMsgId,
-                        }),
-                    })
-                        .then((res) => res.json())
-                        .then((data) => {
-                            console.log("Pertanyaan terkirim:", data.message);
-                        })
-                        .catch((err) =>
-                            console.error("Error mengirim pertanyaan:", err)
-                        );
-
-                    // Setelah 1 detik, kirim jawaban template ke endpoint send-admin-template
-                    setTimeout(() => {
-                        fetch("/send-admin-template", {
+                    // Jika user sudah login (misalnya userId bukan diawali "user_")
+                    if (!window.userId.startsWith("user_")) {
+                        // Kirim ke server: pertanyaan
+                        fetch("/send-user-message", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
-                                "X-CSRF-TOKEN": csrfToken,
+                                "X-CSRF-TOKEN": document
+                                    .querySelector('meta[name="csrf-token"]')
+                                    .getAttribute("content"),
                                 Accept: "application/json",
                             },
                             body: JSON.stringify({
-                                message: template.jawaban,
-                                target: window.userId,
-                                // client_message_id bisa ditambahkan kalau diperlukan
+                                message: item.pertanyaan,
+                                user_id: window.userId,
+                                client_message_id: clientMessageId,
                             }),
                         })
-                            .then((res) => res.json())
+                            .then((response) => response.json())
                             .then((data) => {
-                                console.log("Jawaban terkirim:", data.message);
-                            })
-                            .catch((err) => {
-                                console.error("Error mengirim jawaban:", err);
-                                // Jika terjadi error, tampilkan jawaban secara manual
-                                appendMessageToChat(
-                                    template.jawaban,
-                                    "admin",
-                                    new Date().toISOString(),
-                                    true,
-                                    {
-                                        target: window.userId,
-                                        template: true,
-                                    }
+                                console.log(
+                                    "Pertanyaan terkirim:",
+                                    data.message
                                 );
-                            });
-                    }, 1000);
+                            })
+                            .catch((err) =>
+                                console.error("Error mengirim pertanyaan:", err)
+                            );
+
+                        // Setelah delay, kirim jawaban admin melalui server
+                        setTimeout(() => {
+                            fetch("/send-admin-template", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRF-TOKEN": document
+                                        .querySelector(
+                                            'meta[name="csrf-token"]'
+                                        )
+                                        .getAttribute("content"),
+                                    Accept: "application/json",
+                                },
+                                body: JSON.stringify({
+                                    message: item.jawaban,
+                                    target: window.userId,
+                                }),
+                            })
+                                .then((response) => response.json())
+                                .then((data) => {
+                                    console.log(
+                                        "Jawaban terkirim:",
+                                        data.message
+                                    );
+                                })
+                                .catch((err) => {
+                                    console.error(
+                                        "Error mengirim jawaban:",
+                                        err
+                                    );
+                                    appendMessageToChat(
+                                        item.jawaban,
+                                        "admin",
+                                        new Date().toISOString(),
+                                        true,
+                                        {
+                                            target: window.userId,
+                                            template: true,
+                                        }
+                                    );
+                                });
+                        }, 1000);
+                    } else {
+                        // Jika user belum login, tampilkan jawaban admin secara lokal
+                        setTimeout(() => {
+                            appendMessageToChat(
+                                item.jawaban,
+                                "admin",
+                                new Date().toISOString(),
+                                true,
+                                {
+                                    target: window.userId,
+                                    template: true,
+                                }
+                            );
+                        }, 1000);
+                    }
                 });
-                container.appendChild(btn);
+                templateContainer.appendChild(btn);
             });
         })
         .catch((err) => console.error("Error fetching templates:", err));
