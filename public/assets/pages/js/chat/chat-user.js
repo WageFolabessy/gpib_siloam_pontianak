@@ -336,10 +336,17 @@ $("#chatModal").on("hidden.bs.modal", function () {
 });
 
 // Event listener untuk tombol kirim dan input enter
-document.getElementById("sendChat").addEventListener("click", sendUserMessage);
-document.getElementById("chatInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        sendUserMessage();
-    }
-});
+let btnSendChat = document.getElementById("sendChat");
+let chatInput = document.getElementById("chatInput");
+
+if (btnSendChat) {
+    btnSendChat.addEventListener("click", sendUserMessage);
+}
+if (chatInput) {
+    chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendUserMessage();
+        }
+    });
+}
