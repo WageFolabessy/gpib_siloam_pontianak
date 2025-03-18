@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageRead;
 use App\Events\UserMessageSent;
 use App\Events\AdminMessageSent;
 use App\Models\Chat;
@@ -53,7 +54,7 @@ class ChatController extends Controller
     public function sendUserMessage(Request $request)
     {
         $validated = $request->validate([
-            'message'           => 'required|string|max:1000',
+            'message'           => 'required|string|max:2000',
             'client_message_id' => 'nullable|string',
         ]);
 
@@ -83,7 +84,7 @@ class ChatController extends Controller
     public function sendAdminMessage(Request $request)
     {
         $validated = $request->validate([
-            'message'           => 'required|string|max:1000',
+            'message'           => 'required|string|max:2000',
             'target'            => 'required|integer',
             'client_message_id' => 'nullable|string',
         ]);
@@ -178,5 +179,36 @@ class ChatController extends Controller
             ->get();
 
         return response()->json($messages);
+    }
+
+    public function markAsRead(Request $request, $userId = null)
+    {
+        // Untuk admin membaca pesan user
+        if (Auth::guard('admin_users')->check()) {
+            if (!$userId) {
+                return response()->json(['message' => 'Missing user id'], 400);
+            }
+            $updated = Chat::where('user_id', $userId)
+                ->where('sender_type', 'user')
+                ->whereNull('read_at')
+                ->update(['read_at' => Carbon::now()]);
+            if ($updated) {
+                // Broadcast event agar user yang mengirim pesan (sender_type "user") mendapat notifikasi
+                event(new MessageRead(['user_id' => $userId], 'user'));
+            }
+            return response()->json(['message' => 'Admin: Pesan user berhasil ditandai sudah dibaca'], 200);
+        }
+        // Untuk user membaca pesan admin
+        if (Auth::guard('users')->check()) {
+            $updated = Chat::where('user_id', Auth::user()->id)
+                ->where('sender_type', 'admin')
+                ->whereNull('read_at')
+                ->update(['read_at' => Carbon::now()]);
+            if ($updated) {
+                event(new MessageRead(['user_id' => Auth::user()->id], 'admin'));
+            }
+            return response()->json(['message' => 'User: Pesan admin berhasil ditandai sudah dibaca'], 200);
+        }
+        return response()->json(['message' => 'Unauthorized'], 401);
     }
 }

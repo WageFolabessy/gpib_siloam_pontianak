@@ -73,6 +73,7 @@
         @if (Auth::check())
             window.userId = "{{ Auth::user()->id }}";
             window.userName = "Anda";
+            window.currentRole = "user";
         @else
             let tempUserId = localStorage.getItem("userId");
             if (!tempUserId) {
@@ -81,10 +82,12 @@
             }
             window.userId = tempUserId;
             window.userName = "";
+            window.currentRole = "user";
         @endif
 
         window.sentMessageIds = new Set();
 
+        // Listener untuk pesan yang dikirim admin (incoming)
         Echo.channel("chat-room").listen("AdminMessageSent", (event) => {
             if (event.message.target && String(event.message.target) === String(window.userId)) {
                 appendMessageToChat(
@@ -100,6 +103,7 @@
             }
         });
 
+        // Listener untuk pesan yang dikirim user (incoming kembali; biasanya echo atas pengiriman sendiri)
         Echo.channel("chat-room").listen("UserMessageSent", (event) => {
             if (event.message.client_message_id && window.sentMessageIds.has(event.message.client_message_id)) {
                 window.sentMessageIds.delete(event.message.client_message_id);
@@ -118,7 +122,24 @@
                 );
             }
         });
+
+        // Listener untuk event "MessageRead"
+        // Di sisi user, event dengan sender_type "user" menandakan bahwa pesan yang dikirim oleh user sudah dibaca oleh admin.
+        Echo.channel("chat-room").listen("MessageRead", (event) => {
+            // Tanpa console.log, langsung perbarui tampilan pesan.
+            if (event.sender_type === 'user' && String(event.conversation.user_id) === String(window.userId)) {
+                document.querySelectorAll("#chatMessages .user-message").forEach((el) => {
+                    // Pilih <small> dalam container pesan (asumsi struktur: div > small)
+                    let smallEl = el.querySelector("div > small");
+                    if (smallEl && !smallEl.innerHTML.includes("Dilihat")) {
+                        smallEl.innerHTML +=
+                            ' <span class="badge bg-success ms-2 read-label">Dilihat</span>';
+                    }
+                });
+            }
+        });
     </script>
+
 
     @yield('script')
 

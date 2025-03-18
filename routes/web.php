@@ -57,6 +57,7 @@ Route::middleware('auth:users')->group(function () {
 
 Route::post('send-user-message', [ChatController::class, 'sendUserMessage'])
     ->name('chat.user.send');
+Route::post('/mark-chat-read/{userId?}', [ChatController::class, 'markAsRead'])->name('chat.mark-read');
 
 Route::middleware('auth:admin_users')->group(function () {
     Route::post('send-admin-message', [ChatController::class, 'sendAdminMessage'])

@@ -34,72 +34,16 @@
     <script src="{{ asset('assets/dashboard/js/chat-admin.js') }}"></script>
 
     <script type="module">
-        $(document).ready(() => {
-            window.chatTable = $('#chatTable').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: '{{ route('chat.users') }}',
-                order: [],
-                columns: [{
-                        data: 'DT_RowIndex',
-                        orderable: false,
-                        searchable: false
-                    },
-                    {
-                        data: 'nama_pengguna',
-                        name: 'nama_pengguna'
-                    },
-                    {
-                        data: 'pesan_terakhir',
-                        name: 'pesan_terakhir'
-                    },
-                    {
-                        data: 'waktu',
-                        name: 'waktu'
-                    },
-                    {
-                        data: 'aksi',
-                        orderable: false,
-                        searchable: false
-                    }
-                ]
-            });
-        });
-
-        $(document).on("click", ".openChatModal", function() {
-            const rawConversation = $(this).attr('data-conversation');
-            let conversation = {};
-            try {
-                conversation = JSON.parse(rawConversation);
-            } catch (e) {
-                console.error("Gagal memparsing data conversation:", e);
-            }
-            $("#chatDetailModalLabel").text(`Chat dengan ${conversation.user_name || conversation.user_id}`);
-            $("#chatDetailModal").data("conversation", conversation);
-            $("#chatMessages").empty();
-            loadMessagesForUser(conversation.user_id);
-            loadTemplateTanyaJawab();
-        });
-
-        // Fungsi untuk me-refresh DataTables
-        const refreshChatTable = () => {
-            if (window.chatTable) {
-                window.chatTable.ajax.reload(null, false);
-            }
-        };
-
-        // Global variable untuk menghindari duplikasi broadcast pesan admin
+        window.currentRole = 'admin';
         window.adminSentMessageIds = new Set();
 
         // Listener event broadcast pesan admin
         Echo.channel("chat-room").listen("AdminMessageSent", (e) => {
-            console.log("AdminMessageSent received:", e.message);
-            // Dapatkan conversation aktif dari modal, jika ada
+            // Ambil conversation aktif dari modal detail
             const conversation = $("#chatDetailModal").data("conversation");
             if (conversation && conversation.user_id && e.message.target && String(e.message.target) === String(
                     conversation.user_id)) {
                 if (e.message.client_message_id && window.adminSentMessageIds.has(e.message.client_message_id)) {
-                    console.log("Skipping duplicate admin broadcast:", e.message.client_message_id);
                     window.adminSentMessageIds.delete(e.message.client_message_id);
                     return;
                 }
@@ -118,15 +62,11 @@
 
         // Listener event broadcast pesan user
         Echo.channel("chat-room").listen("UserMessageSent", (e) => {
-            console.log("UserMessageSent received:", e.message);
-            // Ambil conversation aktif; jika tidak ada (modal tidak terbuka),
-            // maka jangan coba append pesan ke modal detail
             const conversation = $("#chatDetailModal").data("conversation");
             if (!conversation || !conversation.user_id) {
                 refreshChatTable();
                 return;
             }
-            // Jika pesan datang dari user yang sesuai dengan conversation aktif, tampilkan di modal
             if (String(e.message.user_id) === String(conversation.user_id)) {
                 appendMessageToChat(
                     e.message.message,
@@ -138,13 +78,35 @@
                     }
                 );
             } else {
-                console.warn(
-                    "Pesan dari user tidak ditampilkan karena tidak sesuai dengan conversation aktif.",
+                console.warn("Pesan dari user tidak ditampilkan karena tidak sesuai dengan conversation aktif.",
                     "Pesan user_id:", e.message.user_id,
-                    "Conversation aktif user_id:", conversation.user_id
-                );
+                    "Conversation aktif user_id:", conversation.user_id);
             }
             refreshChatTable();
         });
+
+        // Listener untuk event "MessageRead"
+        Echo.channel("chat-room").listen("MessageRead", (e) => {
+            // Pastikan event hanya diproses untuk pesan admin yang sudah dibaca oleh user
+            const conversation = $("#chatDetailModal").data("conversation");
+            if (conversation &&
+                conversation.user_id &&
+                e.sender_type === "admin" &&
+                String(conversation.user_id) === String(e.conversation.user_id)
+            ) {
+                $("#chatMessages .admin-message").each(function() {
+                    // Ambil elemen <small> terakhir (diasumsikan berisi waktu)
+                    const $timestampSmall = $(this).find("small.text-muted").last();
+                    // Hapus badge "read-label" yang sudah ada
+                    $timestampSmall.find(".read-label").remove();
+                    // Tambahkan badge "Dilihat" hanya jika belum ada
+                    if ($timestampSmall.children(".read-label").length === 0) {
+                        $timestampSmall.append(
+                            ' <span class="badge bg-success ms-2 read-label">Dilihat</span>');
+                    }
+                });
+            }
+        });
     </script>
 @endsection
+  
