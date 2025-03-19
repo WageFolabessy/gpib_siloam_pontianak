@@ -29,6 +29,17 @@ const getRelativeTime = (dateStr) => {
     return "Baru saja";
 };
 
+// Fungsi helper untuk escaping karakter HTML yang berisiko
+function escapeHTML(str) {
+    if (!str) return "";
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 const csrfToken = document
     .querySelector('meta[name="csrf-token"]')
     .getAttribute("content");
@@ -72,81 +83,84 @@ function saveMessage(messageObj) {
 }
 
 function appendMessageToChat(
-    messageText,
-    sender,
-    timestamp = new Date().toISOString(),
-    store = true,
-    options = {}
+    e,
+    t,
+    a = new Date().toISOString(),
+    s = true,
+    n = {}
 ) {
-    const chatContainer = document.getElementById("chatMessages");
-    let messageDiv = document.createElement("div");
-    let readLabelHTML = "";
-    if (options.read_at) {
-        readLabelHTML =
+    const chatMessagesEl = document.getElementById("chatMessages");
+    let messageWrapper = document.createElement("div");
+    let readLabel = "";
+
+    if (n.read_at) {
+        readLabel =
             ' <span class="badge bg-success ms-2 read-label">Dilihat</span>';
     }
 
-    if (sender === "admin") {
-        // Pesan dari admin; tampil tanpa badge "Dilihat" karena read receipt untuk pesan masuk tidak perlu ditampilkan.
-        messageDiv.classList.add("d-flex", "mb-2", "admin-message");
-        messageDiv.innerHTML = `
+    // Lakukan sanitasi terhadap pesan yang di-display
+    let safeMessage = escapeHTML(e);
+
+    if ("admin" === t) {
+        messageWrapper.classList.add("d-flex", "mb-2", "admin-message");
+        messageWrapper.innerHTML = `
         <span class="fw-bold me-2" style="min-width:70px">Admin</span>
         <div class="p-2 bg-light rounded" style="max-width:75%;">
-            ${messageText}
+            ${safeMessage}
             <br>
-            <small>${getRelativeTime(timestamp)}</small>
+            <small>${getRelativeTime(a)}</small>
         </div>
       `;
     } else {
-        // Pesan dari user (outgoing)
-        messageDiv.classList.add(
+        messageWrapper.classList.add(
             "d-flex",
             "mb-2",
             "flex-row-reverse",
             "user-message"
         );
-        messageDiv.innerHTML = `
-        <span class="fw-bold ms-2" style="min-width:70px">${
-            options.user_name || "Anda"
-        }</span>
+        // Sanitasi nama pengguna juga, jika berasal dari input user
+        const safeUserName = escapeHTML("Anda" || "Anda");
+        messageWrapper.innerHTML = `
+        <span class="fw-bold ms-2" style="min-width:70px">${safeUserName}</span>
         <div class="p-2 bg-primary text-white rounded" style="max-width:75%;">
-            ${messageText}
+            ${safeMessage}
             <br>
-            <small>${getRelativeTime(timestamp)}${readLabelHTML}</small>
+            <small>${getRelativeTime(a)}${readLabel}</small>
         </div>
       `;
     }
 
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    chatMessagesEl.appendChild(messageWrapper);
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 
-    if (store) {
-        const msgObj = {
-            message_id: options.client_message_id || Date.now(),
-            sender: sender,
-            message: messageText,
-            timestamp: timestamp,
-            ...options,
+    // Jika diperlukan, simpan pesan ke localStorage
+    if (s) {
+        const messageData = {
+            message_id: n.client_message_id || Date.now(),
+            sender: t,
+            message: e, // Simpan pesan asli jika diperlukan
+            timestamp: a,
+            ...n,
         };
-        let storedMessages =
+
+        let localMessages =
             JSON.parse(localStorage.getItem("chatMessages")) || [];
-        const duplicate = options.client_message_id
-            ? storedMessages.some(
-                  (item) => item.message_id === options.client_message_id
+
+        // Cek duplikasi pesan
+        const isDuplicate = n.client_message_id
+            ? localMessages.some(
+                  (msg) => msg.message_id === n.client_message_id
               )
-            : storedMessages.some(
-                  (item) =>
-                      item.sender === sender &&
-                      item.message === messageText &&
-                      Math.abs(new Date(item.timestamp) - new Date(timestamp)) <
-                          2000
+            : localMessages.some(
+                  (msg) =>
+                      msg.sender === t &&
+                      msg.message === e &&
+                      Math.abs(new Date(msg.timestamp) - new Date(a)) < 2000
               );
-        if (!duplicate) {
-            storedMessages.push(msgObj);
-            localStorage.setItem(
-                "chatMessages",
-                JSON.stringify(storedMessages)
-            );
+
+        if (!isDuplicate) {
+            localMessages.push(messageData);
+            localStorage.setItem("chatMessages", JSON.stringify(localMessages));
         }
     }
 }
@@ -162,22 +176,25 @@ function loadChatMessages() {
     })
         .then((response) => response.json())
         .then((messages) => {
-            document.getElementById("chatMessages").innerHTML = "";
-            messages.forEach((message) => {
-                const msgSender =
-                    message.sender_type === "admin" ? "admin" : "user";
-                const displayName =
-                    msgSender === "admin" ? "Admin" : message.user_name;
+            const chatMessagesEl = document.getElementById("chatMessages");
+            chatMessagesEl.innerHTML = "";
+
+            messages.forEach((msg) => {
+                const sender = msg.sender_type === "admin" ? "admin" : "user";
+                const safeMessage = escapeHTML(msg.message);
+                const safeUserName = escapeHTML(
+                    sender === "admin" ? "Admin" : msg.user_name
+                );
                 appendMessageToChat(
-                    message.message,
-                    msgSender,
-                    message.created_at,
+                    safeMessage,
+                    sender,
+                    msg.created_at,
                     false,
                     {
-                        user_id: message.user_id,
-                        user_name: displayName,
-                        client_message_id: message.client_message_id,
-                        read_at: message.read_at,
+                        user_id: msg.user_id,
+                        user_name: safeUserName,
+                        client_message_id: msg.client_message_id,
+                        read_at: msg.read_at,
                     }
                 );
             });
@@ -186,6 +203,35 @@ function loadChatMessages() {
             console.error("Error loading chat messages:", error);
         });
 }
+
+// Fungsi untuk mengambil pesan dan menghitung jumlah pesan admin yang belum dibaca
+function updateUnreadBadge() {
+    fetch("/user/messages", {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+        },
+    })
+        .then((response) => response.json())
+        .then((messages) => {
+            // Hitung pesan dari admin yang belum dibaca
+            let unreadCount = messages.filter(
+                (msg) => msg.sender_type === "admin" && !msg.read_at
+            ).length;
+
+            const badge = document.getElementById("chatCount");
+            badge.textContent = unreadCount;
+            badge.style.display = unreadCount > 0 ? "inline-block" : "none";
+        })
+        .catch((error) => {
+            console.error("Error updating unread badge:", error);
+        });
+}
+
+// Panggil updateUnreadBadge secara periodik (misalnya setiap 5 detik)
+setInterval(updateUnreadBadge, 3000);
 
 function sendUserMessage() {
     const chatInputElem = document.getElementById("chatInput");
@@ -223,46 +269,51 @@ function sendUserMessage() {
 
 function loadTemplateTanyaJawab() {
     fetch("/template_tanya_jawab")
-        .then((response) => response.json())
+        .then((res) => res.json())
         .then((templates) => {
-            const container = document.getElementById("templateTanyaJawab");
-            container.innerHTML = "<h6>Pertanyaan Template:</h6>";
+            const templateContainer =
+                document.getElementById("templateTanyaJawab");
+            templateContainer.innerHTML = "<h6>Pertanyaan Template:</h6>";
             templates.forEach((template) => {
                 const btn = document.createElement("button");
                 btn.classList.add("btn", "btn-outline-primary", "m-1");
                 btn.textContent = template.pertanyaan;
                 btn.addEventListener("click", function () {
                     const now = new Date().toISOString();
-                    const msgId =
+                    const clientMessageId =
                         Date.now() +
                         "_" +
                         Math.random().toString(36).substring(2, 10);
-                    appendMessageToChat(
-                        template.pertanyaan,
-                        "user",
-                        now,
-                        true,
-                        {
-                            user_id: window.userId,
-                            user_name: window.userName,
-                            template: true,
-                            client_message_id: msgId,
-                        }
-                    );
+
+                    // Jika user anonim (ID default dimulai dengan "user_"),
+                    // langsung tampilkan pesan template secara lokal dengan label "Anda"
                     if (window.userId.startsWith("user_")) {
+                        appendMessageToChat(
+                            template.pertanyaan,
+                            "user",
+                            now,
+                            true,
+                            {
+                                user_id: window.userId,
+                                user_name: "Anda",
+                                template: true,
+                                client_message_id: clientMessageId,
+                            }
+                        );
+                        // Tampilkan jawaban admin setelah 1 detik
                         setTimeout(() => {
                             appendMessageToChat(
                                 template.jawaban,
                                 "admin",
                                 new Date().toISOString(),
                                 true,
-                                {
-                                    target: window.userId,
-                                    template: true,
-                                }
+                                { target: window.userId, template: true }
                             );
                         }, 1000);
                     } else {
+                        // Untuk user yang terautentikasi, kirim pesan ke server.
+                        // Jangan tampilkan pesan secara lokal agar tidak terjadi duplikasi
+                        // (nanti pesan akan tampil melalui 'loadChatMessages')
                         fetch("/send-user-message", {
                             method: "POST",
                             headers: {
@@ -273,12 +324,14 @@ function loadTemplateTanyaJawab() {
                             body: JSON.stringify({
                                 message: template.pertanyaan,
                                 user_id: window.userId,
-                                client_message_id: msgId,
+                                client_message_id: clientMessageId,
+                                // Jangan sertakan user_name agar backend (atau loadChatMessages)
+                                // secara default menampilkan label "Anda"
                             }),
                         })
-                            .then((response) => response.json())
+                            .then((res) => res.json())
                             .then((data) => {
-                                // Tindakan tambahan jika diperlukan
+                                // Opsional: bisa langsung refresh chat atau biarkan polling mengambil pesan terbaru
                             })
                             .catch((error) =>
                                 console.error(
@@ -286,6 +339,7 @@ function loadTemplateTanyaJawab() {
                                     error
                                 )
                             );
+
                         setTimeout(() => {
                             fetch("/send-admin-template", {
                                 method: "POST",
@@ -299,15 +353,16 @@ function loadTemplateTanyaJawab() {
                                     target: window.userId,
                                 }),
                             })
-                                .then((response) => response.json())
+                                .then((res) => res.json())
                                 .then((data) => {
-                                    // Tindakan tambahan jika diperlukan
+                                    // Opsional: bisa lakukan sesuatu jika diperlukan
                                 })
                                 .catch((error) => {
                                     console.error(
                                         "Error mengirim jawaban:",
                                         error
                                     );
+                                    // Jika terjadi error, fallback saja dengan menampilkan jawaban admin
                                     appendMessageToChat(
                                         template.jawaban,
                                         "admin",
@@ -322,10 +377,10 @@ function loadTemplateTanyaJawab() {
                         }, 1000);
                     }
                 });
-                container.appendChild(btn);
+                templateContainer.appendChild(btn);
             });
         })
-        .catch((error) => console.error("Error fetching templates:", error));
+        .catch((err) => console.error("Error fetching templates:", err));
 }
 
 // Jika chatMessagesDiv ada, tambahkan event listener scroll
@@ -347,6 +402,7 @@ if (chatMessagesDiv) {
 $("#chatModal").on("shown.bs.modal", () => {
     loadChatMessages();
     loadTemplateTanyaJawab();
+    $('#chatInput').trigger('focus');
 });
 
 $("#chatModal").on("hidden.bs.modal", function () {

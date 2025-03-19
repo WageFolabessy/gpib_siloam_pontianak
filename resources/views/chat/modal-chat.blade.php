@@ -31,7 +31,7 @@
             @if (Auth::check())
                 <div class="modal-footer border-top-0">
                     <div class="input-group">
-                        <input type="text" id="chatInput" class="form-control" placeholder="Ketik pesan Anda...">
+                        <input type="text" id="chatInput" class="form-control" placeholder="Ketik pesan Anda..." autofocus>
                         <button type="button" class="btn btn-primary" id="sendChat">Kirim</button>
                     </div>
                 </div>

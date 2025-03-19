@@ -18,6 +18,7 @@
                             <th>Pesan Terakhir</th>
                             <th>Waktu</th>
                             <th>Aksi</th>
+                            <th>Belum dibaca</th>
                         </tr>
                     </thead>
                     <tbody id="chatTableBody"></tbody>

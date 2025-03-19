@@ -16,8 +16,8 @@
                 <form action="#" method="POST" class="w-100">
                     @csrf
                     <div class="input-group">
-                        <input type="text" name="reply" class="form-control" placeholder="Ketik balasan..."
-                            required>
+                        <input type="text" id="chatInput" name="reply" class="form-control" placeholder="Ketik balasan..."
+                            required autofocus>
                         <button class="btn btn-primary" type="submit">Kirim</button>
                     </div>
                 </form>

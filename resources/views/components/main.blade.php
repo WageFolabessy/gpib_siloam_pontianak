@@ -58,6 +58,8 @@
     <button type="button" class="btn btn-primary rounded-circle" id="chatButton" data-bs-toggle="modal"
         data-bs-target="#chatModal">
         <i class="fas fa-comments" style="font-size:24px"></i>
+        <span id="chatCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+            style="display: none;">0</span>
     </button>
 
     @include('chat/modal-chat')

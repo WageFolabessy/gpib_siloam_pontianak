@@ -147,6 +147,16 @@ class ChatController extends Controller
                 $user = User::find($chat->user_id);
                 return $user ? $user->name : $chat->user_id;
             })
+            ->addColumn('unread', function ($chat) {
+                // Hitung pesan dari user yang belum dibaca (read_at null) di percakapan ini
+                $unreadCount = Chat::where('user_id', $chat->user_id)
+                    ->where('sender_type', 'user')
+                    ->whereNull('read_at')
+                    ->count();
+                return $unreadCount > 0
+                    ? '<span class="badge bg-danger">' . $unreadCount . '</span>'
+                    : '';
+            })
             ->addColumn('pesan_terakhir', function ($chat) {
                 $lastMessage = Chat::find($chat->last_chat_id);
                 return $lastMessage ? substr($lastMessage->message, 0, 50) : '';
@@ -163,9 +173,10 @@ class ChatController extends Controller
                 ]);
                 return '<a href="#" class="btn btn-primary btn-sm openChatModal" data-bs-toggle="modal" data-bs-target="#chatDetailModal" data-conversation=\'' . $conversation . '\'>Lihat Chat</a>';
             })
-            ->rawColumns(['aksi'])
+            ->rawColumns(['aksi', 'unread'])
             ->make(true);
     }
+
 
     public function getMessagesForUser(Request $request)
     {
