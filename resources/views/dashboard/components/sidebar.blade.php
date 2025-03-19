@@ -25,17 +25,17 @@
             <i class="fas fa-calendar"></i>
             <span>Jadwal Ibadah</span></a>
     </li>
-    <!-- Nav Item Template Tanya Jawab-->
-    <li class="nav-item {{ request()->is('dashboard/tanya_jawab') ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('dashboard.tanya_jawab') }}">
-            <i class="fas fa-question"></i>
-            <span>Template Tanya Jawab</span></a>
-    </li>
     <!-- Nav Item Pendeta, Majelis-->
     <li class="nav-item {{ request()->is('dashboard/pendeta') ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('dashboard.pendeta') }}">
             <i class="fas fa-bible"></i>
             <span>Pendeta</span></a>
+    </li>
+    <!-- Nav Item Template Tanya Jawab-->
+    <li class="nav-item {{ request()->is('dashboard/tanya_jawab') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('dashboard.tanya_jawab') }}">
+            <i class="fas fa-question"></i>
+            <span>Template Tanya Jawab</span></a>
     </li>
     <!-- Nav Item Chat-->
     <li class="nav-item {{ request()->is('dashboard/chat') ? 'active' : '' }}">
