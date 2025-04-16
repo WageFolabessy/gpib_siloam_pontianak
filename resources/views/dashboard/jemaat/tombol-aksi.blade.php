@@ -1,7 +1,6 @@
 <div class="d-flex justify-content-center align-items-center">
-    <!-- Ikon Hapus -->
-    <a href="#" class="btn btn-danger btn-sm" data-id='{{ $data->id }}' id="tombol-hapus"
-        data-bs-toggle="tooltip" title="Hapus">
-        <i class="fas fa-trash-alt"></i>
-    </a>
+    <button type="button" class="btn btn-danger btn-sm tombol-hapus-jemaat" data-id="{{ $user->id }}"
+        data-name="{{ $user->name }}" data-bs-toggle="tooltip" title="Hapus Jemaat">
+        <i class="fas fa-trash-alt fa-fw"></i>
+    </button>
 </div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\JadwalIbadahController;
+use App\Http\Controllers\JemaatController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PendetaController;
 use App\Http\Controllers\RenunganController;
@@ -153,6 +154,9 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
         Route::put('/admin/update_admin/{admin}', 'update');
         Route::delete('/admin/hapus_admin/{admin}', 'destroy');
     });
-    // Route::get('/admin/jemaatTable', 'getAllJemaat');
-    // Route::delete('/admin/hapus_jemaat/{id}', 'destroyJemaat');
+
+    Route::controller(JemaatController::class)->group(function () {
+        Route::get('/jemaat/jemaatTable', 'index');
+        Route::delete('/jemaat/hapus_jemaat/{user}', 'destroy');
+    });
 });
