@@ -1,216 +1,400 @@
-$(document).ready(function() {
-    let thumbnail_preview = $('#thumbnail-preview')[0];
-
-    // Inisialisasi TinyMCE
-    tinymce.init({
-        selector: 'textarea#isi_bacaan',
-        passive: true
+$(document).ready(function () {
+    $.ajaxSetup({
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        },
     });
 
-    // Inisialisasi DataTable
-    $('#renunganTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: "/dashboard/renungan/renunganTable",
-        columns: [{
-                data: 'DT_RowIndex',
-                name: 'DT_RowIndex'
+    const renunganModalElement = document.getElementById("renunganModal");
+    const renunganModal = renunganModalElement
+        ? new bootstrap.Modal(renunganModalElement)
+        : null;
+    const modalTitle = $("#renunganModalLabel");
+    const renunganForm = $("#renunganForm");
+    const btnSave = $("#btn-save");
+    const errorAlert = $("#error-alert");
+    const thumbnailInput = $("#thumbnail");
+    const thumbnailPreview = $("#thumbnail-preview");
+    const currentThumbnailInfo = $("#current-thumbnail-info");
+    const currentThumbnailName = $("#current-thumbnail-name");
+    const isiBacaanTextarea = $("#isi_bacaan");
+
+    const BASE_URL = "/dashboard/renungan";
+
+    if ($.fn.summernote) {
+        isiBacaanTextarea.summernote({
+            placeholder: "Tulis isi renungan di sini...",
+            tabsize: 2,
+            height: 300,
+            toolbar: [
+                ["style", ["style"]],
+                ["font", ["bold", "underline", "clear"]],
+                ["color", ["color"]],
+                ["para", ["ul", "ol", "paragraph"]],
+                ["table", ["table"]],
+                ["insert", ["link"]],
+                ["view", ["fullscreen", "codeview", "help"]],
+            ],
+        });
+    } else {
+        console.error("Summernote is not loaded.");
+    }
+
+    let renunganTable;
+    if ($.fn.DataTable) {
+        renunganTable = $("#renunganTable").DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: `${BASE_URL}/renunganTable`,
+                error: function (xhr, error, thrown) {
+                    console.error("DataTables error:", xhr.responseText);
+                    showFeedback(
+                        "Gagal memuat data tabel. Coba muat ulang halaman.",
+                        "error"
+                    );
+                },
             },
-            {
-                data: 'judul',
-                name: 'judul'
+            columns: [
+                {
+                    data: "DT_RowIndex",
+                    name: "DT_RowIndex",
+                    orderable: false,
+                    searchable: false,
+                    width: "5%",
+                },
+                { data: "judul", name: "judul", width: "25%" },
+                {
+                    data: "alkitab",
+                    name: "alkitab",
+                    orderable: false,
+                    width: "15%",
+                },
+                {
+                    data: "bacaan_alkitab",
+                    name: "bacaan_alkitab",
+                    orderable: false,
+                    width: "15%",
+                },
+                { data: "created_at", name: "created_at", width: "20%" },
+                { data: "updated_at", name: "updated_at", width: "20%" },
+                {
+                    data: "aksi",
+                    name: "aksi",
+                    orderable: false,
+                    searchable: false,
+                    width: "15%",
+                    className: "text-center",
+                },
+            ],
+            order: [[3, "desc"]],
+            drawCallback: function (settings) {
+                initializeTooltips(this.api().table().container());
             },
-            {
-                data: 'alkitab',
-                name: 'alkitab'
+            language: {
+                processing: "Sedang memproses...",
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ entri",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
+                infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
+                infoFiltered: "(disaring dari _MAX_ total entri)",
+                loadingRecords: "Memuat...",
+                zeroRecords: "Tidak ditemukan data yang sesuai",
+                emptyTable: "Tidak ada data yang tersedia pada tabel ini",
+                paginate: {
+                    first: "Pertama",
+                    previous: "Sebelumnya",
+                    next: "Berikutnya",
+                    last: "Terakhir",
+                },
+                aria: {
+                    sortAscending:
+                        ": aktifkan untuk mengurutkan kolom secara ascending",
+                    sortDescending:
+                        ": aktifkan untuk mengurutkan kolom secara descending",
+                },
             },
-            {
-                data: 'bacaan_alkitab',
-                name: 'bacaan_alkitab'
-            },
-            {
-                data: 'created_at',
-                name: 'created_at'
-            },
-            {
-                data: 'updated_at',
-                name: 'updated_at'
-            },
-            {
-                data: 'aksi',
-                name: 'aksi'
-            }
-        ]
+        });
+    } else {
+        console.error("DataTables is not loaded.");
+    }
+
+    $("#btn-add-renungan").click(function () {
+        setFormState("add");
+        if (renunganModal) renunganModal.show();
     });
 
-    // Tombol Tambah diklik
-    $('#tombol-tambah').click(function() {
-        clearForm();
+    $("#renunganTable").on("click", ".tombol-edit", function () {
+        const renunganId = $(this).data("id");
+        if (!renunganId) return;
 
-        // Setel event klik untuk operasi tambah
-        $('#tombol-simpan').off('click').on('click', tambahRenungan);
-    });
-
-    // Tombol Edit diklik
-    $(document).on('click', '#tombol-edit', function(e) {
-        let id = $(this).data('id');
+        setFormState("edit", renunganId);
 
         $.ajax({
-            url: '/dashboard/renungan/edit_renungan/' + id,
-            type: 'GET',
-            success: function(response) {
-                let labelEditModal = document.getElementById('exampleModalLabel');
-                labelEditModal.innerHTML = "Edit Renungan";
-                $('#exampleModal').modal('show');
-                $('#judul').val(response.data.judul);
-                $('#alkitab').val(response.data.alkitab);
-                $('#bacaan_alkitab').val(response.data.bacaan_alkitab);
-                // Menampilkan thumbnail jika tersedia
-                if (response.data.thumbnail) {
-                    thumbnail_preview.classList.remove('d-none');
-                    $('#thumbnail-preview').attr('src', '/storage/thumbnails/' +
-                        response.data.thumbnail);
+            url: `${BASE_URL}/edit_renungan/${renunganId}`,
+            type: "GET",
+            dataType: "json",
+            beforeSend: function () {
+                btnSave.prop("disabled", true);
+            },
+            success: function (response) {
+                const data = response.data;
+                
+                if (!data) {
+                    showFeedback("Data renungan tidak ditemukan.", "error");
+                    return;
                 }
-                tinymce.get('isi_bacaan').setContent(response.data.isi_bacaan);
+                $("#renungan_id").val(data.id);
+                $("#judul").val(data.judul);
+                $("#alkitab").val(data.alkitab);
+                $("#bacaan_alkitab").val(data.bacaan_alkitab);
+                isiBacaanTextarea.summernote("code", data.isi_bacaan || "");
 
-                // Setel event klik untuk operasi edit
-                $('#tombol-simpan').off('click').on('click', function() {
-                    updateRenungan(id);
-                });
-            }
+                if (data.thumbnail) {
+                    thumbnailPreview
+                        .attr("src", "/storage/" + data.thumbnail)
+                        .removeClass("d-none");
+                    currentThumbnailName.text(
+                        data.thumbnail ? data.thumbnail.split("/").pop() : "N/A"
+                    );
+                    currentThumbnailInfo.removeClass("d-none");
+                } else {
+                    thumbnailPreview.addClass("d-none").attr("src", "#");
+                    currentThumbnailInfo.addClass("d-none");
+                }
+                if (renunganModal) renunganModal.show();
+            },
+            error: function (xhr) {
+                showFeedback(
+                    "Gagal memuat data renungan untuk diedit.",
+                    "error"
+                );
+                console.error(xhr.responseText);
+            },
+            complete: function () {
+                btnSave.prop("disabled", false);
+            },
         });
     });
 
-    // Tombol Hapus diklik
-    $(document).on('click', '#tombol-hapus', function(e) {
-        let id = $(this).data('id');
+    $("#renunganTable").on("click", ".tombol-hapus", function () {
+        const renunganId = $(this).data("id");
+        const renunganJudul = $(this).data("judul");
+        if (!renunganId) return;
 
-        if (confirm('Apakah Anda yakin ingin menghapus renungan ini?')) {
+        if (
+            confirm(
+                `Apakah Anda yakin ingin menghapus renungan "${renunganJudul}"?`
+            )
+        ) {
             $.ajax({
-                url: '/dashboard/renungan/hapus_renungan/' + id,
-                type: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                url: `${BASE_URL}/hapus_renungan/${renunganId}`,
+                type: "DELETE",
+                beforeSend: function () {},
+                success: function (response) {
+                    showFeedback(
+                        response.message || "Renungan berhasil dihapus.",
+                        "success"
+                    );
+                    if (renunganTable) renunganTable.ajax.reload(null, false);
                 },
-                success: function(response) {
-                    $('#renunganTable').DataTable().ajax.reload();
-                    alert('Renungan berhasil dihapus');
+                error: function (xhr) {
+                    const errorMsg =
+                        xhr.responseJSON?.message ||
+                        "Terjadi kesalahan saat menghapus data.";
+                    showFeedback(errorMsg, "error");
+                    console.error(xhr.responseText);
                 },
-                error: function(xhr, status, error) {
-                    alert('Terjadi kesalahan saat menghapus renungan');
-                }
             });
         }
     });
 
-    // Fungsi untuk menambah renungan
-    function tambahRenungan() {
-        clearErrors();
+    btnSave.click(function () {
+        const renunganId = $("#renungan_id").val();
+        const url = renunganId
+            ? `${BASE_URL}/update_renungan/${renunganId}`
+            : `${BASE_URL}/simpan_renungan`;
+        const method = "POST";
 
-        let formData = new FormData();
-        formData.append('judul', $('#judul').val());
-        formData.append('alkitab', $('#alkitab').val());
-        formData.append('bacaan_alkitab', $('#bacaan_alkitab').val());
-        // Cek apakah thumbnail ada atau tidak
-        const thumbnailInput = $('#thumbnail')[0];
-        if (thumbnailInput.files.length > 0) {
-            formData.append('thumbnail', thumbnailInput.files[0]);
+        const isiBacaanContent = isiBacaanTextarea.summernote("code");
+
+        const formData = new FormData(renunganForm[0]);
+        formData.set("isi_bacaan", isiBacaanContent);
+
+        if (renunganId) {
+            formData.append("_method", "PUT");
         }
-        formData.append('isi_bacaan', tinymce.get('isi_bacaan').getContent());
+
+        clearErrors();
+        $(this)
+            .prop("disabled", true)
+            .html(
+                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menyimpan...'
+            );
 
         $.ajax({
-            url: "/dashboard/renungan/simpan_renungan",
-            type: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
+            url: url,
+            type: method,
             data: formData,
             processData: false,
             contentType: false,
-            success: function(response) {
-                alert(response.message)
-                $('#renunganTable').DataTable().ajax.reload();
-                $('#exampleModal').modal('hide');
+            dataType: "json",
+            success: function (response) {
+                showFeedback(
+                    response.message || "Data berhasil disimpan.",
+                    "success"
+                );
+                if (renunganModal) renunganModal.hide();
+                if (renunganTable) renunganTable.ajax.reload(null, false);
             },
-            error: function(xhr, status, error) {
-                let errors = xhr.responseJSON.errors;
-                for (let field in errors) {
-                    let errorMessage = errors[field][
-                        0
-                    ]; // Ambil pesan error pertama untuk setiap field
-                    // Tampilkan pesan error di field yang relevan
-                    $(`#${field}`).siblings('.error-message').text(errorMessage);
+            error: function (xhr) {
+                if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                    displayValidationErrors(xhr.responseJSON.errors);
+                } else {
+                    const errorMsg =
+                        xhr.responseJSON?.message ||
+                        "Terjadi kesalahan server.";
+                    errorAlert.text(errorMsg).removeClass("d-none");
                 }
-            }
-        }).fail(function() {
-            alert('Terjadi kesalahan saat mengirim data ke server.');
-        });
-    }
-
-    // Fungsi untuk memperbarui renungan
-    function updateRenungan(id) {
-        clearErrors();
-
-        let formData = new FormData();
-        
-        formData.append('judul', $('#judul').val());
-        formData.append('alkitab', $('#alkitab').val());
-        formData.append('bacaan_alkitab', $('#bacaan_alkitab').val());
-        // Cek apakah thumbnail ada atau tidak
-        const thumbnailInput = $('#thumbnail')[0];
-        if (thumbnailInput.files.length > 0) {
-            formData.append('thumbnail', thumbnailInput.files[0]);
-        }
-        formData.append('isi_bacaan', tinymce.get('isi_bacaan').getContent());
-
-        $.ajax({
-            url: '/dashboard/renungan/update_renungan/' + id,
-            type: 'POST', // Catatan: Gunakan POST dengan field "_method" diatur sebagai "PUT"
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                console.error("Save/Update Error:", xhr.responseText);
             },
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                $('#renunganTable').DataTable().ajax.reload();
-                $('#exampleModal').modal('hide');
+            complete: function () {
+                btnSave
+                    .prop("disabled", false)
+                    .text(renunganId ? "Simpan Perubahan" : "Tambah");
             },
-            error: function(xhr, status, error) {
-                let errors = xhr.responseJSON.errors;
-                for (let field in errors) {
-                    let errorMessage = errors[field][
-                    0]; // Ambil pesan error pertama untuk setiap field
-                    // Tampilkan pesan error di field yang relevan
-                    $(`#${field}`).siblings('.error-message').text(errorMessage);
-                }
-            }
-        }).fail(function() {
-            alert('Terjadi kesalahan saat mengirim data ke server.');
         });
-    }
-
-    // Fungsi untuk membersihkan form
-    function clearForm() {
-        $('#judul').val('');
-        $('#alkitab').val('');
-        $('#bacaan_alkitab').val('');
-        $('#thumbnail').val(''); // Reset input file
-        $('#thumbnail-preview').attr('src', ''); // Reset tampilan thumbnail
-        tinymce.get('isi_bacaan').setContent('');
-    }
-
-    // Ketika modal ditutup, bersihkan form
-    $('#exampleModal').on('hidden.bs.modal', function() {
-        clearForm();
-        clearErrors();
-        const thumbnail_preview = $('#thumbnail-preview')[0];
-        thumbnail_preview.classList.add('d-none');
     });
 
-    // Fungsi untuk menghapus pesan error
-    function clearErrors() {
-        $('.error-message').text('');
+    if (renunganModalElement) {
+        renunganModalElement.addEventListener(
+            "hidden.bs.modal",
+            function (event) {
+                clearForm();
+            }
+        );
     }
 
+    thumbnailInput.change(function () {
+        const file = this.files[0];
+        thumbnailPreview.addClass("d-none").attr("src", "#");
+        $(this).removeClass("is-invalid");
+        $("#thumbnail-error").text("");
+        currentThumbnailInfo.addClass("d-none");
+
+        if (file && file.type.startsWith("image/")) {
+            const maxSize = 16 * 1024 * 1024;
+            if (file.size > maxSize) {
+                $(this).addClass("is-invalid").val("");
+                $("#thumbnail-error").text(
+                    `Ukuran file maks ${maxSize / 1024 / 1024} MB.`
+                );
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                thumbnailPreview
+                    .attr("src", e.target.result)
+                    .removeClass("d-none");
+            };
+            reader.readAsDataURL(file);
+        } else if (file) {
+            $(this).addClass("is-invalid").val("");
+            $("#thumbnail-error").text("File harus berupa gambar.");
+        }
+    });
+
+    function setFormState(state, id = null) {
+        clearForm();
+        if (state === "add") {
+            modalTitle.text("Tambah Renungan Baru");
+            $("#form_method").val("POST");
+            btnSave.text("Tambah");
+        } else if (state === "edit") {
+            modalTitle.text("Edit Renungan");
+            $("#form_method").val("PUT");
+            $("#renungan_id").val(id);
+            btnSave.text("Simpan Perubahan");
+        }
+    }
+
+    function clearForm() {
+        renunganForm[0].reset();
+        $("#renungan_id").val("");
+        $("#form_method").val("");
+        if ($.fn.summernote) {
+            isiBacaanTextarea.summernote("code", "");
+        }
+        thumbnailPreview.addClass("d-none").attr("src", "#");
+        currentThumbnailInfo.addClass("d-none");
+        clearErrors();
+    }
+
+    function clearErrors() {
+        renunganForm.find(".is-invalid").removeClass("is-invalid");
+        renunganForm.find(".invalid-feedback").text("");
+        errorAlert.addClass("d-none").text("");
+    }
+
+    function displayValidationErrors(errors) {
+        clearErrors();
+        let firstErrorField = null;
+        errorAlert
+            .text("Harap perbaiki kesalahan berikut:")
+            .removeClass("d-none");
+
+        for (const field in errors) {
+            if (!firstErrorField) firstErrorField = field;
+            const input = $(`#${field}`);
+            const errorDiv = $(`#${field}-error`);
+
+            if (input.length) {
+                input.addClass("is-invalid");
+                if (field === "isi_bacaan") {
+                }
+            } else if (field === "thumbnail") {
+                thumbnailInput.addClass("is-invalid");
+            }
+
+            if (errorDiv.length) {
+                errorDiv.text(errors[field][0]);
+            } else {
+                errorAlert.append(
+                    `<div>- ${field.replace(/_/g, " ")}: ${
+                        errors[field][0]
+                    }</div>`
+                );
+                console.warn(`Error div not found for field: ${field}`);
+            }
+        }
+
+        if (firstErrorField) {
+            const errorInput = $(`#${firstErrorField}`);
+            if (errorInput.length && errorInput.is(":visible")) {
+                errorInput.focus();
+            } else if (firstErrorField === "thumbnail") {
+                thumbnailInput.focus();
+            } else if (firstErrorField === "isi_bacaan") {
+                isiBacaanTextarea.summernote("focus");
+            }
+        }
+    }
+
+    function showFeedback(message, type = "info") {
+        console.log(`Feedback (${type}): ${message}`);
+        alert(message);
+    }
+
+    function initializeTooltips(container) {
+        $(container)
+            .find('[data-bs-toggle="tooltip"]')
+            .each(function () {
+                var existingTooltip = bootstrap.Tooltip.getInstance(this);
+                if (existingTooltip) {
+                    existingTooltip.dispose();
+                }
+                new bootstrap.Tooltip(this);
+            });
+    }
 });

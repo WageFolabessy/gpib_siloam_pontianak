@@ -3,132 +3,117 @@
 namespace App\Http\Controllers;
 
 use App\Models\Renungan;
+use App\Http\Requests\StoreRenunganRequest;
+use App\Http\Requests\UpdateRenunganRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Yajra\DataTables\Facades\DataTables;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Yajra\DataTables\Facades\DataTables;
+use Illuminate\View\View;
 
 class RenunganController extends Controller
 {
-    public function index()
+    public function index(Request $request): View | JsonResponse
     {
-        $data = Renungan::orderBy('created_at', 'desc')->get();
+        if ($request->ajax()) {
+            $query = Renungan::query()->select(['id', 'judul', 'alkitab', 'bacaan_alkitab', 'created_at', 'updated_at'])
+                ->orderBy('created_at', 'desc');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.renungan.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($renungan) {
-                return $renungan->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($renungan) {
-                return $renungan->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('aksi', function (Renungan $renungan) {
+                    return view('dashboard.renungan.tombol-aksi', compact('renungan'));
+                })
+                ->editColumn('created_at', function (Renungan $renungan) {
+                    return $renungan->created_at?->isoFormat('dddd, D MMMM YYYY, HH:mm');
+                })
+                ->editColumn('updated_at', function (Renungan $renungan) {
+                    return $renungan->updated_at?->isoFormat('dddd, D MMMM YYYY, HH:mm');
+                })
+                ->rawColumns(['aksi'])
+                ->make(true);
+        }
+
+        return view('dashboard.renungan.index');
     }
 
-    public function store(Request $request)
+    public function edit(Renungan $renungan): JsonResponse
     {
-        // Validasi input
-        $validatedData = $request->validate([
-            'judul' => 'required|string|unique:renungans|max:255',
-            'alkitab' => 'nullable',
-            'bacaan_alkitab' => 'nullable',
-            'thumbnail' => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:16384',
-            'isi_bacaan' => 'required|string',
-        ], [
-            'judul.required' => 'Judul renungan wajib diisi.',
-            'judul.unique' => 'Judul renungan sudah ada.',
-            'thumbnail.image' => 'Thumbnail harus berupa gambar.',
-            'thumbnail.max' => 'Ukuran thumbnail tidak boleh lebih dari 16 MB.',
-            'isi_bacaan.required' => 'Isi renungan wajib diisi.',
-        ]);
+        return response()->json(['data' => $renungan]);
+    }
 
-        // Proses thumbnail (jika diunggah)
+    public function store(StoreRenunganRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
         $thumbnailPath = null;
+
         if ($request->hasFile('thumbnail')) {
-            $thumbnailFile = $request->file('thumbnail');
-            $thumbnailPath = $thumbnailFile->getClientOriginalName(); // Dapatkan nama asli file
-            $thumbnailFile->storeAs('thumbnails', $thumbnailPath, 'public');
+            $thumbnailPath = $request->file('thumbnail')->store('thumbnails', 'public');
+            if (!$thumbnailPath) {
+                return response()->json(['message' => 'Gagal mengunggah thumbnail.'], 500);
+            }
         }
 
         try {
-            // Simpan data ke dalam database
-            Renungan::create([
-                'judul' => $validatedData['judul'],
-                'alkitab' => $validatedData['alkitab'],
-                'bacaan_alkitab' => $validatedData['bacaan_alkitab'],
-                'thumbnail' => $thumbnailPath,
-                'isi_bacaan' => $validatedData['isi_bacaan'],
-                'slug' => Str::slug($validatedData['judul'], '-')
-            ]);
+            $renunganData = $validatedData;
+            $renunganData['thumbnail'] = $thumbnailPath;
 
-            // Berhasil menyimpan
-            return response()->json(['message' => 'Renungan berhasil ditambahkan'], 200);
+            Renungan::create($renunganData);
+
+            return response()->json(['message' => 'Renungan berhasil ditambahkan.'], 201);
         } catch (\Exception $e) {
-            // Tangkap dan log error jika terjadi
-            Log::error($e->getMessage());
-            return response()->json(['errors' => 'Terjadi kesalahan saat menyimpan data'], 422);
+            Log::error("Gagal menyimpan renungan: " . $e->getMessage());
+            if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
+                Storage::disk('public')->delete($thumbnailPath);
+            }
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menyimpan.'], 500);
         }
     }
 
-    public function edit(int $id)
+    public function update(UpdateRenunganRequest $request, Renungan $renungan): JsonResponse
     {
-        $data = Renungan::findOrFail($id);
-        return response()->json(['data' => $data]);
-    }
+        $validatedData = $request->validated();
+        $thumbnailPath = $renungan->thumbnail;
 
-    public function update(Request $request, $id)
-    {
-        // Find the existing record
-        $renungan = Renungan::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'judul' => 'required|string|unique:renungans,judul,' . $renungan->id . '|max:255',
-            'alkitab' => 'nullable',
-            'bacaan_alkitab' => 'nullable',
-            'thumbnail' => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
-            'isi_bacaan' => 'required|string',
-        ], [
-            'judul.required' => 'Judul renungan wajib diisi.',
-            'judul.unique' => 'Judul renungan sudah ada.',
-            'thumbnail.image' => 'Thumbnail harus berupa gambar.',
-            'isi_bacaan.required' => 'Isi renungan wajib diisi.',
-        ]);
-
-        // Update the record
-        $renungan->judul = $validatedData['judul'];
-        $renungan->alkitab = $validatedData['alkitab'];
-        $renungan->bacaan_alkitab = $validatedData['bacaan_alkitab'];
-        $renungan->isi_bacaan = $validatedData['isi_bacaan'];
-        $renungan->slug = Str::slug($validatedData['judul'], '-');
-
-        // Process thumbnail if provided
         if ($request->hasFile('thumbnail')) {
-            $thumbnailFile = $request->file('thumbnail');
-            $thumbnailPath = $thumbnailFile->getClientOriginalName();
-            $thumbnailFile->storeAs('thumbnails', $thumbnailPath, 'public');
-            $renungan->thumbnail = $thumbnailPath;
+            $newThumbnailPath = $request->file('thumbnail')->store('thumbnails', 'public');
+            if (!$newThumbnailPath) {
+                return response()->json(['message' => 'Gagal mengunggah thumbnail baru.'], 500);
+            }
+            if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
+                Storage::disk('public')->delete($thumbnailPath);
+            }
+            $thumbnailPath = $newThumbnailPath;
         }
 
-        // Save changes
-        $renungan->save();
+        try {
+            $updateData = $validatedData;
+            $updateData['thumbnail'] = $thumbnailPath;
 
-        return response()->json(['message' => 'Renungan berhasil diupdate'], 200);
+            $renungan->update($updateData);
+
+            return response()->json(['message' => 'Renungan berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            Log::error("Gagal memperbarui renungan ID {$renungan->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat memperbarui.'], 500);
+        }
     }
 
-    public function destroy($id)
+    public function destroy(Renungan $renungan): JsonResponse
     {
         try {
-            $renungan = Renungan::findOrFail($id);
+            $thumbnailPath = $renungan->thumbnail;
             $renungan->delete();
 
-            return response()->json(['message' => 'Renungan berhasil dihapus'], 200);
+            if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
+                Storage::disk('public')->delete($thumbnailPath);
+            }
+
+            return response()->json(['message' => 'Renungan berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
+            Log::error("Gagal menghapus renungan ID {$renungan->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menghapus.'], 500);
         }
     }
 }

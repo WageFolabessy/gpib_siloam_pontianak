@@ -120,9 +120,9 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::controller(RenunganController::class)->group(function () {
         Route::get('/renungan/renunganTable', 'index');
         Route::post('/renungan/simpan_renungan', 'store');
-        Route::get('/renungan/edit_renungan/{id}', 'edit');
-        Route::post('/renungan/update_renungan/{id}', 'update');
-        Route::delete('/renungan/hapus_renungan/{id}', 'destroy');
+        Route::get('/renungan/edit_renungan/{renungan}', 'edit');
+        Route::put('/renungan/update_renungan/{renungan}', 'update');
+        Route::delete('/renungan/hapus_renungan/{renungan}', 'destroy');
     });
     Route::controller(JadwalIbadahController::class)->group(function () {
         Route::get('/jadwal_ibadah/jadwal_ibadahTable', 'index');
