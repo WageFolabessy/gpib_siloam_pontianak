@@ -3,103 +3,84 @@
 namespace App\Http\Controllers;
 
 use App\Models\TemplateTanyaJawab;
+use App\Http\Requests\StoreTemplateTanyaJawabRequest;
+use App\Http\Requests\UpdateTemplateTanyaJawabRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Yajra\DataTables\Facades\DataTables;
+use Illuminate\View\View;
 
 class TemplateTanyaJawabController extends Controller
 {
-    public function index()
+    public function index(Request $request): View | JsonResponse
     {
-        $data = TemplateTanyaJawab::orderBy('created_at', 'desc')->get();
+        if ($request->ajax()) {
+            $query = TemplateTanyaJawab::query()->select(['id', 'pertanyaan', 'created_at', 'updated_at'])
+                ->orderBy('created_at', 'desc');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.tanya_jawab.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($jadwalIbadah) {
-                return $jadwalIbadah->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($jadwalIbadah) {
-                return $jadwalIbadah->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('aksi', function (TemplateTanyaJawab $templateTanyaJawab) {
+                    return view('dashboard.tanya_jawab.tombol-aksi', compact('templateTanyaJawab'));
+                })
+                ->editColumn('created_at', function (TemplateTanyaJawab $templateTanyaJawab) {
+                    return $templateTanyaJawab->created_at?->isoFormat('D MMM YY, HH:mm');
+                })
+                ->editColumn('updated_at', function (TemplateTanyaJawab $templateTanyaJawab) {
+                    return $templateTanyaJawab->updated_at?->diffForHumans();
+                })
+                ->rawColumns(['aksi'])
+                ->make(true);
+        }
+
+        return view('dashboard.tanya_jawab.index');
     }
 
-    public function store(Request $request)
+    public function edit(TemplateTanyaJawab $templateTanyaJawab): JsonResponse
     {
-        // Validasi input
-        $validatedData = $request->validate([
-            'pertanyaan' => 'required',
-            'jawaban' => 'required',
-        ], [
-            'pertanyaan.required' => 'Pertanyaan wajib diisi.',
-            'jawaban.required' => 'Jawaban wajid diisi.',
-        ]);
+        return response()->json(['data' => $templateTanyaJawab]);
+    }
+
+    public function show(TemplateTanyaJawab $templateTanyaJawab): JsonResponse
+    {
+        return response()->json(['data' => $templateTanyaJawab]);
+    }
+
+    public function store(StoreTemplateTanyaJawabRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
 
         try {
-            // Simpan data ke dalam database
-            TemplateTanyaJawab::create([
-                'pertanyaan' => $validatedData['pertanyaan'],
-                'jawaban' => $validatedData['jawaban'],
-            ]);
-
-            // Berhasil menyimpan
-            return response()->json(['message' => 'Tempate tanya jawab berhasil ditambahkan'], 200);
+            TemplateTanyaJawab::create($validatedData);
+            return response()->json(['message' => 'Template Tanya Jawab berhasil ditambahkan.'], 201);
         } catch (\Exception $e) {
-            // Tangkap dan log error jika terjadi
-            Log::error($e->getMessage());
-            return response()->json(['errors' => 'Terjadi kesalahan saat menyimpan data'], 422);
+            Log::error("Gagal menyimpan Template Tanya Jawab: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menyimpan.'], 500);
         }
     }
 
-    public function edit(int $id)
+    public function update(UpdateTemplateTanyaJawabRequest $request, TemplateTanyaJawab $templateTanyaJawab): JsonResponse
     {
-        $data = TemplateTanyaJawab::findOrFail($id);
-        return response()->json(['data' => $data]);
+        $validatedData = $request->validated();
+
+        try {
+            $templateTanyaJawab->update($validatedData);
+            return response()->json(['message' => 'Template Tanya Jawab berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            Log::error("Gagal memperbarui Template Tanya Jawab ID {$templateTanyaJawab->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat memperbarui.'], 500);
+        }
     }
 
-    public function show(int $id)
-    {
-        $data = TemplateTanyaJawab::findOrFail($id);
-        return response()->json(['data' => $data]);
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Find the existing record
-        $data = TemplateTanyaJawab::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'pertanyaan' => 'required',
-            'jawaban' => 'required',
-        ], [
-            'pertanyaan.required' => 'Pertanyaan wajib diisi.',
-            'jawaban.required' => 'Jawaban wajid diisi.',
-        ]);
-
-        // Update the record
-        $data->pertanyaan = $validatedData['pertanyaan'];
-        $data->jawaban = $validatedData['jawaban'];
-
-        // Save changes
-        $data->save();
-
-        return response()->json(['message' => 'Tempate tanya jawab berhasil diupdate'], 200);
-    }
-
-    public function destroy($id)
+    public function destroy(TemplateTanyaJawab $templateTanyaJawab): JsonResponse
     {
         try {
-            $tanyaJawab = TemplateTanyaJawab::findOrFail($id);
-            $tanyaJawab->delete();
-
-            return response()->json(['message' => 'Tempate tanya jawab berhasil dihapus'], 200);
+            $templateTanyaJawab->delete();
+            return response()->json(['message' => 'Template Tanya Jawab berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
+            Log::error("Gagal menghapus Template Tanya Jawab ID {$templateTanyaJawab->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menghapus.'], 500);
         }
     }
 }

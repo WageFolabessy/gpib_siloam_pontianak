@@ -1,28 +1,27 @@
-<div class="modal fade" id="DetailTanyaJawab" tabindex="-1" aria-labelledby="DetailTanyaJawabLabel" aria-hidden="true">
+<div class="modal fade" id="DetailTanyaJawabModal" tabindex="-1" aria-labelledby="DetailTanyaJawabModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="DetailTanyaJawabLabel">Detail Template Tanya Jawab</h5>
-                <button type="button" class="close" id='tombol-tambah' data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="DetailTanyaJawabModalLabel">Detail Template Tanya Jawab</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="form-container">
-                    <div class="mb-3">
-                        <label for="pertanyaan" class="form-label">Pertanyaan</label>
-                        <textarea class="form-control" id="pertanyaan_detail" name="pertanyaan" rows="5" placeholder="Pertanyaan" readonly></textarea>
-                        <span class="text-danger error-message" id="error-pertanyaan"></span>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Pertanyaan:</label>
+                    <div id="pertanyaan_detail" class="form-control bg-light"
+                        style="min-height: 80px; white-space: pre-wrap;">
                     </div>
-                    <div class="mb-3">
-                        <label for="jawaban" class="form-label">Jawaban</label>
-                        <textarea class="form-control" id="jawaban_detail" name="jawaban" rows="5" placeholder="Jawaban" readonly></textarea>
-                        <span class="text-danger error-message" id="error-jawaban"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Jawaban:</label>
+                    <div id="jawaban_detail" class="form-control bg-light"
+                        style="min-height: 150px; white-space: pre-wrap;">
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>

@@ -134,10 +134,10 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::controller(TemplateTanyaJawabController::class)->group(function () {
         Route::get('/tanya_jawab/tanya_jawabTable', 'index');
         Route::post('/tanya_jawab/simpan_tanya_jawab', 'store');
-        Route::get('/tanya_jawab/edit_tanya_jawab/{id}', 'edit');
-        Route::get('/tanya_jawab/detail_tanya_jawab/{id}', 'show');
-        Route::post('/tanya_jawab/update_tanya_jawab/{id}', 'update');
-        Route::delete('/tanya_jawab/hapus_tanya_jawab/{id}', 'destroy');
+        Route::get('/tanya_jawab/edit_tanya_jawab/{templateTanyaJawab}', 'edit');
+        Route::get('/tanya_jawab/detail_tanya_jawab/{templateTanyaJawab}', 'show');
+        Route::put('/tanya_jawab/update_tanya_jawab/{templateTanyaJawab}', 'update');
+        Route::delete('/tanya_jawab/hapus_tanya_jawab/{templateTanyaJawab}', 'destroy');
     });
     Route::controller(PendetaController::class)->group(function () {
         Route::get('/pendeta/pendetaTable', 'index');

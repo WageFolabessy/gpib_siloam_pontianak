@@ -1,19 +1,18 @@
 <div class="d-flex justify-content-center align-items-center">
-    <!-- Ikon Detail -->
-    <a href="#" class="btn btn-primary btn-sm mr-2" data-id='{{ $data->id }}' id="tombol-detail" data-bs-toggle="tooltip"
-        title="Detail">
-        <i class="fas fa-info-circle"></i>
-    </a>
+    <button type="button" class="btn btn-primary btn-sm me-1 tombol-detail-tanya-jawab"
+        data-id="{{ $templateTanyaJawab->id }}" data-bs-toggle="tooltip" title="Lihat Detail">
+        <i class="fas fa-eye fa-fw"></i>
+    </button>
 
-    <!-- Ikon Edit -->
-    <a href="#" class="btn btn-warning btn-sm mr-2" data-id='{{ $data->id }}' id="tombol-edit" data-bs-toggle="tooltip"
-        title="Edit">
-        <i class="fas fa-edit"></i>
-    </a>
+    <button type="button" class="btn btn-warning btn-sm me-1 tombol-edit-tanya-jawab"
+        data-id="{{ $templateTanyaJawab->id }}" data-bs-toggle="tooltip" title="Edit Template">
+        <i class="fas fa-edit fa-fw"></i>
+    </button>
 
-    <!-- Ikon Hapus -->
-    <a href="#" class="btn btn-danger btn-sm" data-id='{{ $data->id }}' id="tombol-hapus"
-        data-bs-toggle="tooltip" title="Hapus">
-        <i class="fas fa-trash-alt"></i>
-    </a>
+    <button type="button" class="btn btn-danger btn-sm tombol-hapus-tanya-jawab"
+        data-id="{{ $templateTanyaJawab->id }}"
+        data-pertanyaan="{{ \Illuminate\Support\Str::limit($templateTanyaJawab->pertanyaan, 30) }}"
+        data-bs-toggle="tooltip" title="Hapus Template">
+        <i class="fas fa-trash-alt fa-fw"></i>
+    </button>
 </div>
