@@ -142,9 +142,9 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::controller(PendetaController::class)->group(function () {
         Route::get('/pendeta/pendetaTable', 'index');
         Route::post('/pendeta/simpan_pendeta', 'store');
-        Route::get('/pendeta/edit_pendeta/{id}', 'edit');
-        Route::post('/pendeta/update_pendeta/{id}', 'update');
-        Route::delete('/pendeta/hapus_pendeta/{id}', 'destroy');
+        Route::get('/pendeta/edit_pendeta/{pendeta}', 'edit');
+        Route::put('/pendeta/update_pendeta/{pendeta}', 'update');
+        Route::delete('/pendeta/hapus_pendeta/{pendeta}', 'destroy');
     });
     Route::controller(AdminController::class)->group(function () {
         Route::get('/admin/adminTable', 'index');

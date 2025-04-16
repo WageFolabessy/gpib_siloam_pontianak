@@ -2,98 +2,82 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Yajra\DataTables\Facades\DataTables;
-use Illuminate\Support\Facades\Log;
 use App\Models\Pendeta;
+use App\Http\Requests\StorePendetaRequest;
+use App\Http\Requests\UpdatePendetaRequest;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Yajra\DataTables\Facades\DataTables;
+use Illuminate\View\View;
 
 class PendetaController extends Controller
 {
-    public function index()
+    public function index(Request $request): View | JsonResponse
     {
-        $data = Pendeta::orderBy('created_at', 'desc')->get();
+        if ($request->ajax()) {
+            $query = Pendeta::query()->select(['id', 'nama', 'kategori', 'created_at', 'updated_at'])
+                ->orderBy('kategori', 'asc')
+                ->orderBy('nama', 'asc');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.pendeta.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($pendeta) {
-                return $pendeta->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($pendeta) {
-                return $pendeta->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('aksi', function (Pendeta $pendeta) {
+                    return view('dashboard.pendeta.tombol-aksi', compact('pendeta'));
+                })
+                ->editColumn('created_at', function (Pendeta $pendeta) {
+                    return $pendeta->created_at?->isoFormat('D MMM YYYY, HH:mm');
+                })
+                ->editColumn('updated_at', function (Pendeta $pendeta) {
+                    return $pendeta->updated_at?->diffForHumans();
+                })
+                ->rawColumns(['aksi'])
+                ->make(true);
+        }
+
+        return view('dashboard.pendeta.index');
     }
 
-    public function store(Request $request)
+    public function edit(Pendeta $pendeta): JsonResponse
     {
-        // Validasi input
-        $validatedData = $request->validate([
-            'nama' => 'required',
-            'kategori' => 'required|in:Ketua Majelis Jemaat,Pendeta Jemaat',
-        ], [
-            'nama.required' => 'Nama wajib diisi.',
-            'kategori.required' => 'Kategori wajib diisi.',
-        ]);
+        return response()->json(['data' => $pendeta]);
+    }
+
+    public function store(StorePendetaRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated(); // Validasi via Form Request
 
         try {
-            // Simpan data ke dalam database
-            Pendeta::create([
-                'nama' => $validatedData['nama'],
-                'kategori' => $validatedData['kategori'],
-            ]);
-
-            // Berhasil menyimpan
-            return response()->json(['message' => 'Pengurus berhasil ditambahkan'], 200);
+            Pendeta::create($validatedData);
+            return response()->json(['message' => 'Data Pendeta/Majelis berhasil ditambahkan.'], 201);
         } catch (\Exception $e) {
-            // Tangkap dan log error jika terjadi
-            Log::error($e->getMessage());
-            return response()->json(['errors' => 'Terjadi kesalahan saat menyimpan data'], 422);
+            Log::error("Gagal menyimpan Data Pendeta/Majelis: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menyimpan.'], 500);
         }
     }
 
-    public function edit(int $id)
+    public function update(UpdatePendetaRequest $request, Pendeta $pendeta): JsonResponse // Route Model Binding
     {
-        $data = Pendeta::findOrFail($id);
-        return response()->json(['data' => $data]);
+        $validatedData = $request->validated(); // Validasi via Form Request
+
+        try {
+            $pendeta->update($validatedData);
+            return response()->json(['message' => 'Data Pendeta/Majelis berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            Log::error("Gagal memperbarui Data Pendeta/Majelis ID {$pendeta->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat memperbarui.'], 500);
+        }
     }
 
-    public function update(Request $request, $id)
-    {
-        // Find the existing record
-        $data = Pendeta::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'nama' => 'required',
-            'kategori' => 'required|in:Ketua Majelis Jemaat,Pendeta Jemaat',
-        ], [
-            'nama.required' => 'Nama wajib diisi.',
-            'kategori.required' => 'Kategori wajib diisi.',
-        ]);
-
-        // Update the record
-        $data->nama = $validatedData['nama'];
-        $data->kategori = $validatedData['kategori'];
-
-        // Save changes
-        $data->save();
-
-        return response()->json(['message' => 'Pengurus berhasil diupdate'], 200);
-    }
-
-    public function destroy($id)
+    public function destroy(Pendeta $pendeta): JsonResponse
     {
         try {
-            $renungan = Pendeta::findOrFail($id);
-            $renungan->delete();
+            $pendeta->delete();
 
-            return response()->json(['message' => 'Pengurus berhasil dihapus'], 200);
+            return response()->json(['message' => 'Data Pendeta/Majelis berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
+            Log::error("Gagal menghapus Data Pendeta/Majelis ID {$pendeta->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menghapus.'], 500);
         }
     }
 }
