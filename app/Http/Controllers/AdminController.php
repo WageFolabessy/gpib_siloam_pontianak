@@ -3,135 +3,94 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
-use App\Models\User;
+use App\Http\Requests\StoreAdminRequest;
+use App\Http\Requests\UpdateAdminRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Hash;
+use Yajra\DataTables\Facades\DataTables;
+use Illuminate\View\View;
 
 class AdminController extends Controller
 {
-    public function index()
+    public function index(Request $request): View | JsonResponse
     {
-        $data = AdminUser::orderBy('created_at', 'desc')->get();
+        if ($request->ajax()) {
+            $query = AdminUser::query()->select(['id', 'username', 'created_at', 'updated_at'])
+                ->orderBy('username', 'asc');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.admin.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($admin) {
-                return $admin->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($admin) {
-                return $admin->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('aksi', function (AdminUser $admin) {
+                    if ($admin->id === Auth::guard('admin_users')->id()) {
+                        return '<span class="text-muted fst-italic">Anda</span>';
+                    }
+                    return view('dashboard.admin.tombol-aksi', compact('admin'));
+                })
+                ->editColumn('created_at', function (AdminUser $admin) {
+                    return $admin->created_at?->isoFormat('D MMM YY, HH:mm');
+                })
+                ->editColumn('updated_at', function (AdminUser $admin) {
+                    return $admin->updated_at?->diffForHumans();
+                })
+                ->rawColumns(['aksi'])
+                ->make(true);
+        }
+
+        return view('dashboard.admin.index');
     }
 
-    public function store(Request $request)
+    public function edit(AdminUser $admin): JsonResponse
     {
-        // Validasi input
-        $validatedData = $request->validate([
-            'username' => 'required||unique:admin_users,username',
-            'password' => 'required|min:8',
-        ], [
-            'username.required' => 'username wajib diisi.',
-            'username.unique' => 'username sudah digunakan.',
-            'password.min' => 'Password wajib memiliki minimal 8 karakter.',
-        ]);
+        return response()->json(['data' => $admin->only(['id', 'username'])]);
+    }
+
+    public function store(StoreAdminRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
 
         try {
-            // Simpan data ke dalam database
-            AdminUser::create([
-                'username' => $validatedData['username'],
-                'password' => Hash::make($validatedData['password']),
-            ]);
-
-            // Berhasil menyimpan
-            return response()->json(['message' => 'Admin berhasil ditambahkan'], 200);
+            AdminUser::create($validatedData);
+            return response()->json(['message' => 'Admin berhasil ditambahkan.'], 201);
         } catch (\Exception $e) {
-            // Tangkap dan log error jika terjadi
-            Log::error($e->getMessage());
-            return response()->json(['errors' => 'Terjadi kesalahan saat menyimpan data'], 422);
+            Log::error("Gagal menyimpan Admin: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menyimpan.'], 500);
         }
     }
 
-    public function edit(int $id)
+    public function update(UpdateAdminRequest $request, AdminUser $admin): JsonResponse
     {
-        $data = AdminUser::findOrFail($id);
-        return response()->json(['data' => $data]);
-    }
+        $validatedData = $request->validated();
+        $updateData = [
+            'username' => $validatedData['username'],
+        ];
 
-    public function update(Request $request, $id)
-    {
-        // Find the existing record
-        $data = AdminUser::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'username' => 'required|unique:users,username,' . $data->id,
-            'password' => 'nullable|min:8',
-        ], [
-            'username.required' => 'Username wajib diisi.',
-            'username.unique' => 'Username sudah ada.',
-            'password.min' => 'Password wajib memiliki minimal 8 karakter.',
-        ]);
-
-        // Update the record
-        $data->username = $validatedData['username'];
-        if($request->has('password')){
-            $data->password = Hash::make($validatedData['password']);
+        if (!empty($validatedData['password'])) {
+            $updateData['password'] = $validatedData['password'];
         }
 
-        // Save changes
-        $data->save();
-
-        return response()->json(['message' => 'Admin berhasil diupdate'], 200);
-    }
-
-    public function destroy($id)
-    {
         try {
-            $admin = AdminUser::findOrFail($id);
+            $admin->update($updateData);
+            return response()->json(['message' => 'Admin berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            Log::error("Gagal memperbarui Admin ID {$admin->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat memperbarui.'], 500);
+        }
+    }
+
+    public function destroy(AdminUser $admin): JsonResponse
+    {
+        if ($admin->id === Auth::guard('admin_users')->id()) {
+            return response()->json(['message' => 'Anda tidak dapat menghapus akun Anda sendiri.'], 403);
+        }
+
+        try {
             $admin->delete();
-
-            return response()->json(['message' => 'Admin berhasil dihapus'], 200);
+            return response()->json(['message' => 'Admin berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
-        }
-    }
-
-    public function getAllJemaat()
-    {
-        $data = User::orderBy('created_at', 'desc')->get();
-
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.jemaat.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($admin) {
-                return $admin->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($admin) {
-                return $admin->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
-    }
-
-    public function destroyJemaat($id)
-    {
-        try {
-            $user = User::findOrFail($id);
-            $user->delete();
-
-            return response()->json(['message' => 'Jemaat berhasil dihapus'], 200);
-        } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
+            Log::error("Gagal menghapus Admin ID {$admin->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menghapus.'], 500);
         }
     }
 }

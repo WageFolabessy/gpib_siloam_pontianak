@@ -20,6 +20,8 @@ class AdminUser extends Authenticatable
         'remember_token',
     ];
 
+    protected $casts = ['password' => 'hashed'];
+
     public function sentChats()
     {
         return $this->morphMany(Chat::class, 'sender');

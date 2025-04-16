@@ -149,11 +149,10 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::controller(AdminController::class)->group(function () {
         Route::get('/admin/adminTable', 'index');
         Route::post('/admin/simpan_admin', 'store');
-        Route::get('/admin/edit_admin/{id}', 'edit');
-        Route::post('/admin/update_admin/{id}', 'update');
-        Route::delete('/admin/hapus_admin/{id}', 'destroy');
-
-        Route::get('/admin/jemaatTable', 'getAllJemaat');
-        Route::delete('/admin/hapus_jemaat/{id}', 'destroyJemaat');
+        Route::get('/admin/edit_admin/{admin}', 'edit');
+        Route::put('/admin/update_admin/{admin}', 'update');
+        Route::delete('/admin/hapus_admin/{admin}', 'destroy');
     });
+    // Route::get('/admin/jemaatTable', 'getAllJemaat');
+    // Route::delete('/admin/hapus_jemaat/{id}', 'destroyJemaat');
 });
