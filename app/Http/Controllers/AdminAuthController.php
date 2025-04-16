@@ -20,9 +20,7 @@ class AdminAuthController extends Controller
     {
         $credentials = $request->validated();
 
-        $remember = $request->boolean('remember');
-
-        if (!Auth::guard('admin_users')->attempt($credentials, $remember)) {
+        if (!Auth::guard('admin_users')->attempt($credentials)) {
             throw ValidationException::withMessages([
                 'auth' => 'Username atau password yang Anda masukkan salah.',
             ]);
