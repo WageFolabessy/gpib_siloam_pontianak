@@ -154,7 +154,6 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
         Route::put('/admin/update_admin/{admin}', 'update');
         Route::delete('/admin/hapus_admin/{admin}', 'destroy');
     });
-
     Route::controller(JemaatController::class)->group(function () {
         Route::get('/jemaat/jemaatTable', 'index');
         Route::delete('/jemaat/hapus_jemaat/{user}', 'destroy');
