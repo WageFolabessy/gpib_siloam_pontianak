@@ -127,9 +127,9 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::controller(JadwalIbadahController::class)->group(function () {
         Route::get('/jadwal_ibadah/jadwal_ibadahTable', 'index');
         Route::post('/jadwal_ibadah/simpan_jadwal_ibadah', 'store');
-        Route::get('/jadwal_ibadah/edit_jadwal_ibadah/{id}', 'edit');
-        Route::post('/jadwal_ibadah/update_jadwal_ibadah/{id}', 'update');
-        Route::delete('/jadwal_ibadah/hapus_jadwal_ibadah/{id}', 'destroy');
+        Route::get('/jadwal_ibadah/edit_jadwal_ibadah/{jadwalIbadah}', 'edit');
+        Route::put('/jadwal_ibadah/update_jadwal_ibadah/{jadwalIbadah}', 'update');
+        Route::delete('/jadwal_ibadah/hapus_jadwal_ibadah/{jadwalIbadah}', 'destroy');
     });
     Route::controller(TemplateTanyaJawabController::class)->group(function () {
         Route::get('/tanya_jawab/tanya_jawabTable', 'index');

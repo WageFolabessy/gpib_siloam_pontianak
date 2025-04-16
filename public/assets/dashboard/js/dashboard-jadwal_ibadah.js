@@ -1,191 +1,321 @@
-// Inisialisasi DataTable
-$('#jadwalIbadahTable').DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: "/dashboard/jadwal_ibadah/jadwal_ibadahTable",
-    columns: [{
-            data: 'DT_RowIndex',
-            name: 'DT_RowIndex'
+$(document).ready(function () {
+    $.ajaxSetup({
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
         },
-        {
-            data: 'keterangan',
-            name: 'keterangan'
-        },
-        {
-            data: 'hari',
-            name: 'hari'
-        },
-        {
-            data: 'jam',
-            name: 'jam'
-        },
-        {
-            data: 'kategori',
-            name: 'kategori'
-        },
-        {
-            data: 'created_at',
-            name: 'created_at'
-        },
-        {
-            data: 'updated_at',
-            name: 'updated_at'
-        },
-        {
-            data: 'aksi',
-            name: 'aksi',
+    });
+
+    const jadwalModalElement = document.getElementById("jadwalIbadahModal");
+    const jadwalModal = jadwalModalElement
+        ? new bootstrap.Modal(jadwalModalElement)
+        : null;
+    const modalTitle = $("#jadwalIbadahModalLabel");
+    const jadwalForm = $("#jadwalIbadahForm");
+    const btnSave = $("#btn-save-jadwal");
+    const errorAlert = $("#error-alert");
+
+    let jadwalTable;
+    if ($.fn.DataTable) {
+        jadwalTable = $("#jadwalIbadahTable").DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: "/dashboard/jadwal_ibadah/jadwal_ibadahTable",
+                error: function (xhr, error, thrown) {
+                    console.error("DataTables Error:", xhr.responseText);
+                    showFeedback(
+                        "Gagal memuat data tabel. Silakan muat ulang halaman.",
+                        "error"
+                    );
+                },
+            },
+            columns: [
+                {
+                    data: "DT_RowIndex",
+                    name: "DT_RowIndex",
+                    orderable: false,
+                    searchable: false,
+                    width: "5%",
+                },
+                { data: "keterangan", name: "keterangan", width: "30%" },
+                { data: "hari", name: "hari", width: "10%" },
+                {
+                    data: "jam",
+                    name: "jam",
+                    width: "10%",
+                    className: "text-center",
+                },
+                { data: "kategori", name: "kategori", width: "15%" },
+                { data: "created_at", name: "created_at", width: "10%" },
+                { data: "updated_at", name: "updated_at", width: "10%" },
+                {
+                    data: "aksi",
+                    name: "aksi",
+                    orderable: false,
+                    searchable: false,
+                    width: "10%",
+                    className: "text-center",
+                },
+            ],
+            order: [[5, "desc"]],
+            drawCallback: function (settings) {
+                initializeTooltips(this.api().table().container());
+            },
+            language: {
+                processing: "Sedang memproses...",
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ entri",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
+                infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
+                infoFiltered: "(disaring dari _MAX_ total entri)",
+                loadingRecords: "Memuat...",
+                zeroRecords: "Tidak ditemukan data yang sesuai",
+                emptyTable: "Tidak ada data yang tersedia pada tabel ini",
+                paginate: {
+                    first: "Pertama",
+                    previous: "Sebelumnya",
+                    next: "Berikutnya",
+                    last: "Terakhir",
+                },
+            },
+        });
+    } else {
+        console.error("DataTables library is not loaded.");
+    }
+
+    $("#btn-add-jadwal").click(function () {
+        setFormState("add");
+        if (jadwalModal) jadwalModal.show();
+    });
+    $("#btn-add-jadwal-header").click(function () {
+        $("#btn-add-jadwal").click();
+    });
+
+    $("#jadwalIbadahTable").on("click", ".tombol-edit-jadwal", function () {
+        const jadwalId = $(this).data("id");
+        if (!jadwalId) {
+            console.error("Edit button clicked without data-id");
+            return;
         }
-    ]
-});
 
-// Tombol Tambah diklik
-$('#tombol-tambah').click(function() {
-    clearForm();
+        setFormState("edit", jadwalId);
 
-    // Setel event klik untuk operasi tambah
-    $('#tombol-simpan').off('click').on('click', tambahJadwalIbadah);
-});
+        $.ajax({
+            url: `/dashboard/jadwal_ibadah/edit_jadwal_ibadah/${jadwalId}`,
+            type: "GET",
+            dataType: "json",
+            beforeSend: function () {
+                btnSave
+                    .prop("disabled", true)
+                    .html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat...'
+                    );
+            },
+            success: function (response) {
+                const data = response.data;
+                if (!data) {
+                    showFeedback("Data jadwal tidak ditemukan.", "error");
+                    if (jadwalModal) jadwalModal.hide();
+                    return;
+                }
+                $("#jadwal_ibadah_id").val(data.id);
+                $("#keterangan").val(data.keterangan);
+                $("#hari").val(data.hari);
+                $("#jam").val(data.jam);
+                $("#kategori").val(data.kategori);
 
-// Tombol Edit diklik
-$(document).on('click', '#tombol-edit', function(e) {
-    let id = $(this).data('id');
+                if (jadwalModal) jadwalModal.show();
+            },
+            error: function (xhr) {
+                showFeedback("Gagal memuat data jadwal untuk diedit.", "error");
+                console.error("Edit AJAX Error:", xhr.responseText);
+            },
+            complete: function () {
+                btnSave
+                    .prop("disabled", false)
+                    .text(
+                        $("#form_method").val() === "PUT"
+                            ? "Simpan Perubahan"
+                            : "Tambah"
+                    );
+            },
+        });
+    });
 
-    $.ajax({
-        url: '/dashboard/jadwal_ibadah/edit_jadwal_ibadah/' + id,
-        type: 'GET',
-        success: function(response) {
-            let labelEditModal = document.getElementById('exampleModalLabel');
-            let tombolUpdate = document.getElementById('tombol-simpan');
-            labelEditModal.innerHTML = "Edit Jadwal Ibadah";
-            tombolUpdate.innerHTML = "Perbaharui";
-            $('#exampleModal').modal('show');
-            $('#keterangan').val(response.data.keterangan);
-            $('#hari').val(response.data.hari);
-            $('#jam').val(response.data.jam);
-            $('#kategori').val(response.data.kategori);
+    $("#jadwalIbadahTable").on("click", ".tombol-hapus-jadwal", function () {
+        const jadwalId = $(this).data("id");
+        const jadwalKeterangan = $(this).data("keterangan") || "ini";
+        if (!jadwalId) {
+            console.error("Delete button clicked without data-id");
+            return;
+        }
 
-            // Setel event klik untuk operasi edit
-            $('#tombol-simpan').off('click').on('click', function() {
-                updateJadwalIbadah(id);
+        if (
+            confirm(
+                `Apakah Anda yakin ingin menghapus jadwal "${jadwalKeterangan}"?`
+            )
+        ) {
+            $.ajax({
+                url: `/dashboard/jadwal_ibadah/hapus_jadwal_ibadah/${jadwalId}`,
+                type: "DELETE",
+                success: function (response) {
+                    showFeedback(
+                        response.message || "Jadwal Ibadah berhasil dihapus.",
+                        "success"
+                    );
+                    if (jadwalTable) jadwalTable.ajax.reload(null, false);
+                },
+                error: function (xhr) {
+                    const errorMsg =
+                        xhr.responseJSON?.message ||
+                        "Terjadi kesalahan saat menghapus data.";
+                    showFeedback(errorMsg, "error");
+                    console.error("Delete AJAX Error:", xhr.responseText);
+                },
             });
         }
     });
-});
 
-// Tombol Hapus diklik
-$(document).on('click', '#tombol-hapus', function(e) {
-    let id = $(this).data('id');
+    btnSave.click(function () {
+        const jadwalId = $("#jadwal_ibadah_id").val();
+        const url = jadwalId
+            ? `/dashboard/jadwal_ibadah/update_jadwal_ibadah/${jadwalId}`
+            : "/dashboard/jadwal_ibadah/simpan_jadwal_ibadah";
+        const method = "POST";
 
-    if (confirm('Apakah Anda yakin ingin menghapus jadwal ibadah ini?')) {
+        const formData = new FormData(jadwalForm[0]);
+        if (jadwalId) {
+            formData.append("_method", "PUT");
+        }
+
+        clearErrors();
+        $(this)
+            .prop("disabled", true)
+            .html(
+                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menyimpan...'
+            );
+
         $.ajax({
-            url: '/dashboard/jadwal_ibadah/hapus_jadwal_ibadah/' + id,
-            type: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            url: url,
+            type: method,
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: "json",
+            success: function (response) {
+                showFeedback(
+                    response.message || "Data berhasil disimpan.",
+                    "success"
+                );
+                if (jadwalModal) jadwalModal.hide();
+                if (jadwalTable) jadwalTable.ajax.reload(null, false);
             },
-            success: function(response) {
-                $('#jadwalIbadahTable').DataTable().ajax.reload();
-                alert('Jadwal Ibadah berhasil dihapus');
+            error: function (xhr) {
+                if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                    displayValidationErrors(xhr.responseJSON.errors);
+                } else {
+                    const errorMsg =
+                        xhr.responseJSON?.message ||
+                        "Terjadi kesalahan server.";
+                    errorAlert.text(errorMsg).removeClass("d-none");
+                }
+                console.error("Save/Update AJAX Error:", xhr.responseText);
             },
-            error: function(xhr, status, error) {
-                alert('Terjadi kesalahan saat menghapus jadwal ibadah');
-            }
+            complete: function () {
+                btnSave
+                    .prop("disabled", false)
+                    .text(jadwalId ? "Simpan Perubahan" : "Tambah");
+            },
         });
+    });
+
+    if (jadwalModalElement) {
+        jadwalModalElement.addEventListener(
+            "hidden.bs.modal",
+            function (event) {
+                clearForm();
+            }
+        );
+    }
+
+    function setFormState(state, id = null) {
+        clearForm();
+        if (state === "add") {
+            modalTitle.text("Tambah Jadwal Ibadah Baru");
+            $("#form_method").val("POST");
+            $("#jadwal_ibadah_id").val("");
+            btnSave.text("Tambah");
+        } else if (state === "edit") {
+            modalTitle.text("Edit Jadwal Ibadah");
+            $("#form_method").val("PUT");
+            $("#jadwal_ibadah_id").val(id);
+            btnSave.text("Simpan Perubahan");
+        }
+    }
+
+    function clearForm() {
+        jadwalForm[0].reset();
+        $("#jadwal_ibadah_id").val("");
+        $("#form_method").val("");
+        clearErrors();
+    }
+
+    function clearErrors() {
+        jadwalForm.find(".is-invalid").removeClass("is-invalid");
+        jadwalForm.find(".invalid-feedback").text("");
+        errorAlert.addClass("d-none").text("");
+    }
+
+    function displayValidationErrors(errors) {
+        clearErrors();
+        let firstErrorField = null;
+        errorAlert
+            .text("Harap perbaiki kesalahan berikut:")
+            .removeClass("d-none");
+
+        for (const field in errors) {
+            if (!firstErrorField) firstErrorField = field;
+            const inputElement = $(`#${field}`);
+            const errorDiv = $(`#${field}-error`);
+
+            if (inputElement.length) {
+                inputElement.addClass("is-invalid");
+            }
+
+            if (errorDiv.length) {
+                errorDiv.text(errors[field][0]);
+            } else {
+                errorAlert.append(
+                    `<div>- ${field.replace(/_/g, " ")}: ${
+                        errors[field][0]
+                    }</div>`
+                );
+                console.warn(`Error div not found for field: ${field}`);
+            }
+        }
+
+        if (firstErrorField) {
+            const firstErrorElement = $(`#${firstErrorField}`);
+            if (firstErrorElement.length && firstErrorElement.is(":visible")) {
+                firstErrorElement.focus();
+            }
+        }
+    }
+
+    function showFeedback(message, type = "info") {
+        console.log(`Feedback (${type}): ${message}`);
+        alert(message);
+    }
+
+    function initializeTooltips(container) {
+        $(container)
+            .find('[data-bs-toggle="tooltip"]')
+            .each(function () {
+                var existingTooltip = bootstrap.Tooltip.getInstance(this);
+                if (existingTooltip) {
+                    existingTooltip.dispose();
+                }
+                new bootstrap.Tooltip(this);
+            });
     }
 });
-
-// Fungsi untuk menambah renungan
-function tambahJadwalIbadah() {
-    clearErrors();
-
-    let formData = new FormData();
-    formData.append('keterangan', $('#keterangan').val());
-    formData.append('hari', $('#hari').val());
-    formData.append('jam', $('#jam').val());
-    formData.append('kategori', $('#kategori').val());
-
-    $.ajax({
-        url: "/dashboard/jadwal_ibadah/simpan_jadwal_ibadah",
-        type: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            $('#jadwalIbadahTable').DataTable().ajax.reload();
-            $('#exampleModal').modal('hide');
-        },
-        error: function(xhr, status, error) {
-            let errors = xhr.responseJSON.errors;
-            for (let field in errors) {
-                let errorMessage = errors[field][
-                    0
-                ]; // Ambil pesan error pertama untuk setiap field
-                // Tampilkan pesan error di field yang relevan
-                $(`#${field}`).siblings('.error-message').text(errorMessage);
-            }
-        }
-    }).fail(function() {
-        alert('Terjadi kesalahan saat mengirim data ke server.');
-    });
-}
-
-// Fungsi untuk memperbarui renungan
-function updateJadwalIbadah(id) {
-    clearErrors();
-
-    let formData = new FormData();
-    formData.append('keterangan', $('#keterangan').val());
-    formData.append('hari', $('#hari').val());
-    formData.append('jam', $('#jam').val());
-    formData.append('kategori', $('#kategori').val());
-
-    $.ajax({
-        url: '/dashboard/jadwal_ibadah/update_jadwal_ibadah/' + id,
-        type: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            alert(response.message)
-            $('#jadwalIbadahTable').DataTable().ajax.reload();
-            $('#exampleModal').modal('hide');
-        },
-        error: function(xhr, status, error) {
-            let errors = xhr.responseJSON.errors;
-            for (let field in errors) {
-                let errorMessage = errors[field][
-                0]; // Ambil pesan error pertama untuk setiap field
-                // Tampilkan pesan error di field yang relevan
-                $(`#${field}`).siblings('.error-message').text(errorMessage);
-            }
-        }
-    }).fail(function() {
-        alert('Terjadi kesalahan saat mengirim data ke server.');
-    });
-}
-
-// Fungsi untuk membersihkan form
-function clearForm() {
-    $('#keterangan').val('');
-    $('#hari').val('');
-    $('#jam').val('');
-    let kategori = document.getElementById('kategori');
-    kategori.selectedIndex = 0;
-}
-
-// Ketika modal ditutup, bersihkan form
-$('#exampleModal').on('hidden.bs.modal', function() {
-    clearForm();
-    clearErrors();
-});
-
-// Fungsi untuk menghapus pesan error
-function clearErrors() {
-    $('.error-message').text('');
-}

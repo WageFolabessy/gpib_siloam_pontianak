@@ -2,108 +2,91 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreJadwalIbadahRequest;
+use App\Http\Requests\UpdateJadwalIbadahRequest;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Log;
 use App\Models\JadwalIbadah;
+use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
 
 class JadwalIbadahController extends Controller
 {
-    public function index()
+    public function index(Request $request): View | JsonResponse
     {
-        $data = JadwalIbadah::orderBy('created_at', 'desc')->get();
+        if ($request->ajax()) {
+            $query = JadwalIbadah::query()->select(['id', 'keterangan', 'hari', 'jam', 'kategori', 'created_at', 'updated_at'])
+                ->orderBy('kategori', 'asc')
+                ->orderByRaw("
+                    CASE hari
+                        WHEN 'Minggu' THEN 1
+                        WHEN 'Senin' THEN 2
+                        WHEN 'Selasa' THEN 3
+                        WHEN 'Rabu' THEN 4
+                        WHEN 'Kamis' THEN 5
+                        WHEN 'Jumat' THEN 6
+                        WHEN 'Sabtu' THEN 7
+                        ELSE 8 -- Meletakkan NULL atau nilai lain di akhir (ASC)
+                    END ASC
+                ")
+                ->orderBy('jam', 'asc');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('aksi', function ($data) {
-                return view('dashboard.jadwal_ibadah.tombol-aksi')->with('data', $data);
-            })
-            ->editColumn('created_at', function ($jadwalIbadah) {
-                return $jadwalIbadah->created_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->editColumn('updated_at', function ($jadwalIbadah) {
-                return $jadwalIbadah->updated_at->isoFormat('dddd, D MMMM YYYY, HH.mm');
-            })
-            ->make(true);
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('aksi', function (JadwalIbadah $jadwalIbadah) {
+                    return view('dashboard.jadwal_ibadah.tombol-aksi', compact('jadwalIbadah'));
+                })
+                ->editColumn('created_at', function (JadwalIbadah $jadwalIbadah) {
+                    return $jadwalIbadah->created_at?->isoFormat('D MMM YY, HH:mm'); // Format YY agar lebih pendek
+                })
+                ->editColumn('updated_at', function (JadwalIbadah $jadwalIbadah) {
+                    return $jadwalIbadah->updated_at?->diffForHumans();
+                })
+                ->rawColumns(['aksi'])
+                ->make(true);
+        }
+
+        return view('dashboard.jadwal_ibadah.index');
     }
 
-    public function store(Request $request)
+    public function edit(JadwalIbadah $jadwalIbadah): JsonResponse
     {
-        // Validasi input
-        $validatedData = $request->validate([
-            'keterangan' => 'required',
-            'hari' => 'nullable',
-            'jam' => 'required',
-            'kategori' => 'required|in:Ibadah Minggu,Ibadah Pelkat',
-        ], [
-            'keterangan.required' => 'Keterangan ibadah wajib diisi.',
-            'jam.required' => 'Jam ibadah wajid diisi.',
-            'kategori.required' => 'Kategori wajib diisi.',
-        ]);
+        return response()->json(['data' => $jadwalIbadah]);
+    }
 
+    public function store(StoreJadwalIbadahRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
         try {
-            // Simpan data ke dalam database
-            JadwalIbadah::create([
-                'keterangan' => $validatedData['keterangan'],
-                'hari' => $request->has('hari') ? $validatedData['hari'] : null,
-                'jam' => $validatedData['jam'],
-                'kategori' => $validatedData['kategori'],
-            ]);
-
-            // Berhasil menyimpan
-            return response()->json(['message' => 'Jadwal Ibadah berhasil ditambahkan'], 200);
+            JadwalIbadah::create($validatedData);
+            return response()->json(['message' => 'Jadwal Ibadah berhasil ditambahkan.'], 201);
         } catch (\Exception $e) {
-            // Tangkap dan log error jika terjadi
-            Log::error($e->getMessage());
-            return response()->json(['errors' => 'Terjadi kesalahan saat menyimpan data'], 422);
+            Log::error("Gagal menyimpan Jadwal Ibadah: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menyimpan.'], 500);
         }
     }
 
-    public function edit(int $id)
+    public function update(UpdateJadwalIbadahRequest $request, JadwalIbadah $jadwalIbadah): JsonResponse
     {
-        $data = JadwalIbadah::findOrFail($id);
-        return response()->json(['data' => $data]);
+        $validatedData = $request->validated();
+        try {
+            $jadwalIbadah->update($validatedData);
+            return response()->json(['message' => 'Jadwal Ibadah berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            Log::error("Gagal memperbarui Jadwal Ibadah ID {$jadwalIbadah->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat memperbarui.'], 500);
+        }
     }
 
-    public function update(Request $request, $id)
-    {
-        // Find the existing record
-        $data = JadwalIbadah::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'keterangan' => 'required',
-            'hari' => 'nullable',
-            'jam' => 'required',
-            'kategori' => 'required|in:Ibadah Minggu,Ibadah Pelkat',
-        ], [
-            'keterangan.required' => 'Keterangan ibadah wajib diisi.',
-            'jam.required' => 'Jam ibadah wajid diisi.',
-            'kategori.required' => 'Kategori wajib diisi.',
-        ]);
-
-        // Update the record
-        $data->keterangan = $validatedData['keterangan'];
-        $data->hari = $request->has('hari') ? $validatedData['hari'] : null;
-        $data->jam = $validatedData['jam'];
-        $data->kategori = $validatedData['kategori'];
-
-        // Save changes
-        $data->save();
-
-        return response()->json(['message' => 'Jadwal Ibadah berhasil diupdate'], 200);
-    }
-
-    public function destroy($id)
+    public function destroy(JadwalIbadah $jadwalIbadah): JsonResponse
     {
         try {
-            $renungan = JadwalIbadah::findOrFail($id);
-            $renungan->delete();
-
-            return response()->json(['message' => 'Jadwal Ibadah berhasil dihapus'], 200);
+            $jadwalIbadah->delete();
+            return response()->json(['message' => 'Jadwal Ibadah berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            // Handle error
-            Log::error($e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat menghapus data'], 500);
+            Log::error("Gagal menghapus Jadwal Ibadah ID {$jadwalIbadah->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan internal saat menghapus.'], 500);
         }
     }
 }
