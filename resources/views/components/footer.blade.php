@@ -1,29 +1,27 @@
-<footer class="navbar navbar-expand-lg navbar-light bg-light border-top1 mt-4">
+<footer class="bg-light border-top mt-auto py-3">
     <div class="container">
-        <p class="navbar-text col-md-4 mb-0 footer-text">
-            &copy; GPIB SILOAM PONTIANAK
-        </p>
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center text-md-start mb-3 mb-md-0">
+                <small class="text-muted">&copy; {{ date('Y') }} GPIB SILOAM PONTIANAK</small>
+            </div>
 
-        <a href="/"
-            class="navbar-brand col-md-4 d-flex align-items-center justify-content-center
-                    mb-3 mb-md-0 me-md-auto link-body-emphasis text-decoration-none">
-            <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo" width="80" height="80"
-                class="d-inline-block align-text-center" />
-        </a>
+            <div class="col-md-4 d-flex align-items-center justify-content-center mb-3 mb-md-0">
+                <a href="{{ route('beranda') }}" class="link-body-emphasis text-decoration-none">
+                    <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo" width="60" height="60">
+                </a>
+            </div>
 
-        <ul class="navbar-nav col-md-4 justify-content-end">
-            <li class="nav-item">
-                <a href="{{ route('beranda') }}" class="nav-link px-2 footer-text">Beranda</a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('jadwal-ibadah') }}" class="nav-link px-2 footer-text">Jadwal Ibadah</a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('renungan') }}" class="nav-link px-2 footer-text">Renungan</a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('info') }}" class="nav-link px-2 footer-text">Sejarah</a>
-            </li>
-        </ul>
+            <div class="col-md-4">
+                <ul class="nav justify-content-center justify-content-md-end">
+                    <li class="nav-item"><a href="{{ route('beranda') }}" class="nav-link px-2 text-muted">Beranda</a>
+                    </li>
+                    <li class="nav-item"><a href="{{ route('jadwal-ibadah') }}"
+                            class="nav-link px-2 text-muted">Jadwal</a></li>
+                    <li class="nav-item"><a href="{{ route('renungan') }}" class="nav-link px-2 text-muted">Renungan</a>
+                    </li>
+                    <li class="nav-item"><a href="{{ route('info') }}" class="nav-link px-2 text-muted">Info</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 </footer>

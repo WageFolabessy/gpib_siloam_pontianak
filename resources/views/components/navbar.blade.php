@@ -1,63 +1,78 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top border-bottom1">
+<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top border-bottom shadow-sm">
     <div class="container">
-        <a class="navbar-brand" href="/">
-            <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo" width="80" height="80"
-                class="d-inline-block align-text-center">
-            GPIB SILOAM PONTIANAK
+        <a class="navbar-brand fw-bold" href="{{ route('beranda') }}">
+            <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo GPIB Siloam Pontianak" width="60"
+                height="60" class="d-inline-block align-middle me-2">
+            <span class="d-none d-sm-inline">GPIB SILOAM PONTIANAK</span>
+            <span class="d-inline d-sm-none">GPIB Siloam Ptk</span>
         </a>
-        <button class="navbar-toggler w-100" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
             aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav align-items-lg-center">
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->is('/') ? 'active' : '' }}" href="{{ url('/') }}">Beranda</a>
+                    <a class="nav-link {{ Route::is('beranda') ? 'active' : '' }}" href="{{ route('beranda') }}"
+                        @if (Route::is('beranda')) aria-current="page" @endif>Beranda</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->is('jadwal-ibadah') ? 'active' : '' }}"
-                        href="{{ url('jadwal-ibadah') }}">Jadwal Ibadah</a>
+                    <a class="nav-link {{ Route::is('jadwal-ibadah*') ? 'active' : '' }}"
+                        href="{{ route('jadwal-ibadah') }}"
+                        @if (Route::is('jadwal-ibadah*')) aria-current="page" @endif>Jadwal Ibadah</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->is('renungan') ? 'active' : '' }}"
-                        href="{{ url('renungan') }}">Renungan</a>
+                    <a class="nav-link {{ Route::is('renungan*') ? 'active' : '' }}" href="{{ route('renungan') }}"
+                        @if (Route::is('renungan*')) aria-current="page" @endif>Renungan</a>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link {{ request()->is('info') ? 'active' : '' }} dropdown-toggle" href="#"
+                    <a class="nav-link dropdown-toggle {{ Route::is('info*') ? 'active' : '' }}" href="#"
                         role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Tentang Gereja
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ url('info') }}">Info</a></li>
+                        <li><a class="dropdown-item {{ Route::is('info') ? 'active' : '' }}"
+                                href="{{ route('info') }}">Info</a></li>
                     </ul>
                 </li>
-                @if (Auth::user())
+
+                @auth
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                            aria-expanded="false">
-                            Profil
+                        <a class="nav-link dropdown-toggle {{ Route::is('profil*') ? 'active' : '' }}" href="#"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user me-1"></i>
+                            {{ Auth::user()->name }}
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url('profil') }}">Profil Saya</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item {{ Route::is('profil') ? 'active' : '' }}"
+                                    href="{{ route('profil') }}">Profil Saya</a></li>
                             <li>
-                                <form method="POST" action="{{ route('jemaat_logout') }}">
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <form method="POST" action="{{ route('jemaat_logout') }}" class="d-inline">
                                     @csrf
                                     <button type="submit" class="dropdown-item"
-                                        style="border: none; background: none; cursor: pointer;">
-                                        Keluar
+                                        style="border: none; background: none; cursor: pointer; width: 100%; text-align: left;">
+                                        <i class="fas fa-sign-out-alt me-1"></i> Keluar
                                     </button>
                                 </form>
                             </li>
                         </ul>
                     </li>
                 @else
-                    <li class="nav-item">
-                        <a class="btn btn-primary" href="{{ route('pages.login') }}">Masuk</a>
+                    <li class="nav-item ms-lg-2">
+                        <a class="btn btn-primary btn-sm" href="{{ route('pages.login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i> Masuk
+                        </a>
                     </li>
-                @endif
-                <!-- Tombol toggle untuk speech synthesis -->
-                <li class="nav-item ms-2">
-                    <a id="btnToggleSpeech" class="btn btn-secondary" href="#" type="button"></a>
+                @endauth
+
+                <li class="nav-item ms-lg-2">
+                    <button id="btnToggleSpeech" class="btn btn-outline-secondary btn-sm text-white" type="button"
+                        title="Aktifkan/Nonaktifkan Pembaca Teks">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
                 </li>
             </ul>
         </div>

@@ -45,7 +45,7 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/jadwal-ibadah', 'jadwalIbadah')->name('jadwal-ibadah');
 
     Route::get('/renungan', 'renungan')->name('renungan');
-    Route::get('/renungan/{slug}', 'detailRenungan')->name('detail-renungan');
+    Route::get('/renungan/{renungan:slug}', 'detailRenungan')->name('detail-renungan');
 
     Route::get('/info', 'info')->name('info');
 });
