@@ -35,33 +35,53 @@ class PageController extends Controller
 
     public function renungan(): View
     {
-        $renungan = Renungan::orderBy('created_at', 'desc')
-            ->paginate(9);
-
+        $renungan = Renungan::orderBy('created_at', 'desc')->paginate(6); // Mengambil halaman pertama
         return view('pages.renungan', compact('renungan'));
     }
 
-    public function getRenungan(Request $request): JsonResponse
+    public function getRenunganPage(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'offset' => ['required', 'integer', 'min:0'],
-            'limit' => ['required', 'integer', 'min:1', 'max:50'],
-        ]);
+        try {
+            // Ambil nomor halaman dari query string (?page=X)
+            // Default ke halaman 1 jika tidak ada parameter 'page'
+            $page = $request->query('page', 1);
 
-        $renungan = Renungan::orderBy('created_at', 'desc')
-            ->skip($validated['offset'])
-            ->take($validated['limit'])
-            ->get();
+            $renungan = Renungan::orderBy('created_at', 'desc')
+                ->paginate(6, ['*'], 'page', $page);
 
-        return response()->json([
-            'data' => $renungan,
-            'hasMore' => $renungan->count() === (int)$validated['limit']
-        ]);
+            // Pastikan view 'pages.renungan.renungan-card' ada
+            // Render partial view HANYA untuk kartu-kartu renungan
+            $html = view('pages.renungan.renungan-card', compact('renungan'))->render();
+
+            // Dapatkan URL halaman berikutnya DARI KONTEKS route ini
+            $nextPageUrl = $renungan->hasMorePages() ? $renungan->nextPageUrl() : null;
+
+            // Kembalikan response JSON
+            return response()->json([
+                'html' => $html,
+                'nextPageUrl' => $nextPageUrl // URL ini sekarang akan benar -> /get-renungan-page?page=X+1
+            ]);
+        } catch (\Exception $e) {
+            // Log error jika gagal
+            Log::error('Error getRenunganPage AJAX: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+
+            // Kembalikan response error JSON
+            // Memberikan detail error lebih banyak saat debugging (jika APP_DEBUG true)
+            $errorData = ['error' => 'Gagal memuat data renungan.'];
+            if (config('app.debug')) {
+                $errorData['details'] = $e->getMessage();
+                $errorData['trace'] = $e->getTraceAsString(); // Hati-hati dengan informasi sensitif
+            }
+            return response()->json($errorData, 500);
+        }
     }
 
     public function detailRenungan(Renungan $renungan): View
     {
-        $diupload = $renungan->updated_at?->locale('id')->isoFormat('dddd, D MMMM YYYY, HH:mm');
+        // Gunakan Carbon instance langsung jika kolom di-cast sebagai tanggal di model
+        $diupload = optional($renungan->updated_at)->locale('id')->isoFormat('dddd, D MMMM YYYY, HH:mm');
+        // Atau jika tidak di-cast:
+        // $diupload = \Carbon\Carbon::parse($renungan->updated_at)->locale('id')->isoFormat('dddd, D MMMM YYYY, HH:mm');
 
         $prevRenungan = Renungan::where('created_at', '<', $renungan->created_at)
             ->orderBy('created_at', 'desc')

@@ -10,7 +10,6 @@
     let utteranceQueue = [];
     let isSpeakingQueue = false;
     let currentQueueUtterance = null;
-    let currentInteractiveUtterance = null;
 
     const supportEl = document.getElementById("browserSupport");
     const toggleBtn = document.getElementById("btnToggleSpeech");
@@ -155,35 +154,32 @@
         const processedText = preprocessText(textToSpeak);
         if (!processedText) return;
 
-        currentInteractiveUtterance = new SpeechSynthesisUtterance(
-            processedText
-        );
+        const utterance = new SpeechSynthesisUtterance(processedText);
         const selectedVoice = getSelectedVoice();
         if (selectedVoice) {
-            currentInteractiveUtterance.voice = selectedVoice;
-            currentInteractiveUtterance.lang = selectedVoice.lang;
+            utterance.voice = selectedVoice;
+            utterance.lang = selectedVoice.lang;
         } else {
-            currentInteractiveUtterance.lang = "id-ID";
+            utterance.lang = "id-ID";
         }
-        currentInteractiveUtterance.rate = 1.1;
-        currentInteractiveUtterance.pitch = 1;
+        utterance.rate = 1.1;
+        utterance.pitch = 1;
 
-        currentInteractiveUtterance.onend = function () {
-            currentInteractiveUtterance = null;
-        };
-        currentInteractiveUtterance.onerror = function (event) {
-            console.error("Utterance Error (Interactive)", event.error);
+        utterance.onerror = function (event) {
+            console.error("Utterance Error (Direct Speak)", event.error);
             showFeedback(`Error TTS: ${event.error}`, "error");
-            currentInteractiveUtterance = null;
         };
 
-        setTimeout(() => {
-            try {
-                if (synth) synth.speak(currentInteractiveUtterance);
-            } catch (e) {
-                console.error("Speak Error:", e);
+        try {
+            if (synth) {
+                if (synth.speaking || synth.paused) {
+                    synth.cancel();
+                } // Pastikan cancel sebelum speak baru
+                synth.speak(utterance);
             }
-        }, 150);
+        } catch (e) {
+            console.error("Speak Error:", e);
+        }
     };
 
     function processSpeechQueue() {
@@ -198,7 +194,7 @@
         }
         isSpeakingQueue = true;
 
-        const textToSpeak = utteranceQueue.shift(); // Ambil teks biasa
+        const textToSpeak = utteranceQueue.shift();
         const processedText = preprocessText(textToSpeak);
         if (!processedText) {
             setTimeout(processSpeechQueue, 50);
@@ -229,7 +225,12 @@
 
         setTimeout(() => {
             try {
-                if (synth) synth.speak(currentQueueUtterance);
+                if (synth && !synth.speaking && !synth.paused) {
+                    synth.speak(currentQueueUtterance);
+                } else if (synth && (synth.speaking || synth.paused)) {
+                    utteranceQueue.unshift(textToSpeak);
+                    isSpeakingQueue = false;
+                }
             } catch (e) {
                 console.error("Error calling synth.speak from queue:", e);
                 stopSpeechQueue();
@@ -248,10 +249,9 @@
 
     window.startSpeechQueue = function () {
         if (!synthesisAvailable || !window.speechEnabled) return;
-        if (synth && synth.speaking && currentInteractiveUtterance) {
+        if (synth && synth.speaking) {
             try {
                 synth.cancel();
-                currentInteractiveUtterance = null;
             } catch (e) {}
         }
         if (isSpeakingQueue) {
@@ -261,7 +261,6 @@
             currentQueueUtterance.onend = null;
             currentQueueUtterance = null;
         }
-
         if (utteranceQueue.length > 0) {
             processSpeechQueue();
         }
@@ -273,10 +272,6 @@
         if (currentQueueUtterance) {
             currentQueueUtterance.onend = null;
             currentQueueUtterance = null;
-        }
-        if (currentInteractiveUtterance) {
-            currentInteractiveUtterance.onend = null;
-            currentInteractiveUtterance = null;
         }
         if (synth && synth.speaking) {
             try {
@@ -310,7 +305,6 @@
                     synth.onvoiceschanged = loadVoices;
                 }
             }, 100);
-
             if (toggleBtn) {
                 updateToggleButton(toggleBtn, window.speechEnabled);
                 toggleBtn.addEventListener("click", function () {
@@ -318,6 +312,13 @@
                     updateToggleButton(this, window.speechEnabled);
                     if (!window.speechEnabled) {
                         stopSpeechQueue();
+                        document.dispatchEvent(
+                            new CustomEvent("tts-global-disabled")
+                        );
+                    } else {
+                        document.dispatchEvent(
+                            new CustomEvent("tts-global-enabled")
+                        );
                     }
                 });
             } else {
