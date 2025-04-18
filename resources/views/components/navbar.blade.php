@@ -69,7 +69,7 @@
                 @endauth
 
                 <li class="nav-item ms-lg-2">
-                    <button id="btnToggleSpeech" class="btn btn-outline-secondary btn-sm text-white" type="button"
+                    <button id="btnToggleSpeech" class="btn btn-success btn-sm text-white" type="button"
                         title="Aktifkan/Nonaktifkan Pembaca Teks">
                         <i class="fas fa-volume-up"></i>
                     </button>

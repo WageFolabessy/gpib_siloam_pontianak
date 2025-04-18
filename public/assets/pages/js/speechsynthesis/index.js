@@ -9,7 +9,8 @@
 
     let utteranceQueue = [];
     let isSpeakingQueue = false;
-    let currentUtterance = null;
+    let currentQueueUtterance = null;
+    let currentInteractiveUtterance = null;
 
     const supportEl = document.getElementById("browserSupport");
     const toggleBtn = document.getElementById("btnToggleSpeech");
@@ -24,7 +25,10 @@
             supportText +=
                 '<i class="fas fa-times-circle text-danger me-1"></i>TTS Tidak Didukung. ';
             window.speechEnabled = false;
-            if (toggleBtn) toggleBtn.disabled = true;
+            if (toggleBtn) {
+                toggleBtn.disabled = true;
+                updateToggleButton(toggleBtn, false);
+            }
         }
         supportEl.innerHTML = supportText;
     }
@@ -48,7 +52,10 @@
         if (!synthesisAvailable) return null;
         if (voices.length === 0) loadVoices();
         if (voices.length === 0) {
-            let allVoices = synth.getVoices();
+            let allVoices = [];
+            try {
+                allVoices = synth.getVoices();
+            } catch (e) {}
             return (
                 allVoices.find((voice) =>
                     voice.lang.toLowerCase().startsWith("en")
@@ -85,7 +92,6 @@
                 }
             );
         } catch (e) {
-            console.error("Error fixing Bible citation:", e);
             return text;
         }
     }
@@ -98,11 +104,33 @@
             text = text.replace(/(?:https?|ftp):\/\/[\n\S]+/g, "");
             text = text.replace(/&copy;/gi, "hak cipta");
             text = text.replace(/&reg;/gi, "merek terdaftar");
-            text = text.replace(/([.?!;])\s+/g, "$1 ");
-            text = text.replace(/\s+/g, " ").trim();
+            text = text.replace(
+                /(\d{1,2})\.(\d{2})\s*-\s*(\d{1,2})\.(\d{2})\s*WIB/gi,
+                (m, sH, sM, eH, eM) =>
+                    `pukul ${parseInt(sH, 10)} ${
+                        parseInt(sM, 10) === 0 ? "" : sM
+                    } sampai pukul ${parseInt(eH, 10)} ${
+                        parseInt(eM, 10) === 0 ? "" : eM
+                    } Waktu Indonesia Barat`
+            );
+            text = text.replace(
+                /(\d{1,2})[:.](\d{2})\s*WIB/gi,
+                (m, h, i) =>
+                    `pukul ${parseInt(h, 10)} ${
+                        parseInt(i, 10) === 0 ? "" : i
+                    } Waktu Indonesia Barat`
+            );
+            text = text.replace(
+                /(\d{1,2})[:.](\d{2})(?![:.\d\s]*(WIB|-|\.\d))/g,
+                (m, h, i) =>
+                    `pukul ${parseInt(h, 10)} ${parseInt(i, 10) === 0 ? "" : i}`
+            );
+            text = text
+                .replace(/([.?!;])\s+/g, "$1 ")
+                .replace(/\s+/g, " ")
+                .trim();
             return text;
         } catch (e) {
-            console.error("Error preprocessing text:", e);
             return text.replace(/\s+/g, " ").trim();
         }
     }
@@ -122,34 +150,38 @@
             }
             return;
         }
-        stopSpeechQueue();  
+        stopSpeechQueue();
 
         const processedText = preprocessText(textToSpeak);
         if (!processedText) return;
 
-        const utterance = new SpeechSynthesisUtterance(processedText);
+        currentInteractiveUtterance = new SpeechSynthesisUtterance(
+            processedText
+        );
         const selectedVoice = getSelectedVoice();
-
         if (selectedVoice) {
-            utterance.voice = selectedVoice;
-            utterance.lang = selectedVoice.lang;
+            currentInteractiveUtterance.voice = selectedVoice;
+            currentInteractiveUtterance.lang = selectedVoice.lang;
         } else {
-            utterance.lang = "id-ID";
+            currentInteractiveUtterance.lang = "id-ID";
         }
-        utterance.rate = 1.1;
-        utterance.pitch = 1;
-        utterance.onerror = function (event) {
-            console.error("SpeechSynthesisUtterance.onerror", event.error);
-            showFeedback(`Error Text-to-Speech: ${event.error}`, "error");
-            isSpeakingQueue = false;
+        currentInteractiveUtterance.rate = 1.1;
+        currentInteractiveUtterance.pitch = 1;
+
+        currentInteractiveUtterance.onend = function () {
+            currentInteractiveUtterance = null;
+        };
+        currentInteractiveUtterance.onerror = function (event) {
+            console.error("Utterance Error (Interactive)", event.error);
+            showFeedback(`Error TTS: ${event.error}`, "error");
+            currentInteractiveUtterance = null;
         };
 
         setTimeout(() => {
             try {
-                if (synth) synth.speak(utterance);
+                if (synth) synth.speak(currentInteractiveUtterance);
             } catch (e) {
-                console.error("Error calling synth.speak:", e);
-                showFeedback("Gagal memulai pembacaan teks.", "error");
+                console.error("Speak Error:", e);
             }
         }, 150);
     };
@@ -161,84 +193,76 @@
             utteranceQueue.length === 0
         ) {
             isSpeakingQueue = false;
-            currentUtterance = null;
+            currentQueueUtterance = null;
             return;
         }
-
         isSpeakingQueue = true;
-        const textToSpeak = utteranceQueue.shift();
-        const processedText = preprocessText(textToSpeak);
 
+        const textToSpeak = utteranceQueue.shift(); // Ambil teks biasa
+        const processedText = preprocessText(textToSpeak);
         if (!processedText) {
             setTimeout(processSpeechQueue, 50);
             return;
         }
 
-        currentUtterance = new SpeechSynthesisUtterance(processedText);
+        currentQueueUtterance = new SpeechSynthesisUtterance(processedText);
         const selectedVoice = getSelectedVoice();
-
         if (selectedVoice) {
-            currentUtterance.voice = selectedVoice;
-            currentUtterance.lang = selectedVoice.lang;
+            currentQueueUtterance.voice = selectedVoice;
+            currentQueueUtterance.lang = selectedVoice.lang;
         } else {
-            currentUtterance.lang = "id-ID";
+            currentQueueUtterance.lang = "id-ID";
         }
-        currentUtterance.rate = 1.1;
-        currentUtterance.pitch = 1;
+        currentQueueUtterance.rate = 1.1;
+        currentQueueUtterance.pitch = 1;
 
-        currentUtterance.onend = function () {
-            currentUtterance = null;
+        currentQueueUtterance.onend = function () {
+            currentQueueUtterance = null;
             setTimeout(processSpeechQueue, 200);
         };
-
-        currentUtterance.onerror = function (event) {
-            console.error(
-                "SpeechSynthesisUtterance.onerror (Queue)",
-                event.error
-            );
+        currentQueueUtterance.onerror = function (event) {
+            console.error("Utterance Error (Queue)", event.error);
             showFeedback(`Error saat membaca antrian: ${event.error}`, "error");
-            currentUtterance = null;
+            currentQueueUtterance = null;
             stopSpeechQueue();
         };
 
         setTimeout(() => {
             try {
-                if (synth) synth.speak(currentUtterance);
+                if (synth) synth.speak(currentQueueUtterance);
             } catch (e) {
                 console.error("Error calling synth.speak from queue:", e);
-                showFeedback(
-                    "Gagal memulai pembacaan teks dari antrian.",
-                    "error"
-                );
                 stopSpeechQueue();
             }
         }, 50);
     }
 
-    window.addToSpeechQueue = function (text) {
-        if (typeof text === "string" && text.trim().length > 0) {
-            utteranceQueue.push(text.trim());
-        } else if (Array.isArray(text)) {
-            text.forEach((item) => {
-                if (typeof item === "string" && item.trim().length > 0) {
-                    utteranceQueue.push(item.trim());
-                }
-            });
-        }
+    window.addToSpeechQueue = function (items) {
+        const itemsToAdd = Array.isArray(items) ? items : [items];
+        itemsToAdd.forEach((item) => {
+            if (typeof item === "string" && item.trim().length > 0) {
+                utteranceQueue.push(item.trim());
+            }
+        });
     };
 
     window.startSpeechQueue = function () {
         if (!synthesisAvailable || !window.speechEnabled) return;
-        if (synth && synth.speaking) {
+        if (synth && synth.speaking && currentInteractiveUtterance) {
             try {
                 synth.cancel();
+                currentInteractiveUtterance = null;
             } catch (e) {}
         }
-        if (currentUtterance) {
-            currentUtterance.onend = null;
+        if (isSpeakingQueue) {
+            return;
+        }
+        if (currentQueueUtterance) {
+            currentQueueUtterance.onend = null;
+            currentQueueUtterance = null;
         }
 
-        if (!isSpeakingQueue && utteranceQueue.length > 0) {
+        if (utteranceQueue.length > 0) {
             processSpeechQueue();
         }
     };
@@ -246,9 +270,13 @@
     window.stopSpeechQueue = function () {
         utteranceQueue = [];
         isSpeakingQueue = false;
-        if (currentUtterance) {
-            currentUtterance.onend = null;
-            currentUtterance = null;
+        if (currentQueueUtterance) {
+            currentQueueUtterance.onend = null;
+            currentQueueUtterance = null;
+        }
+        if (currentInteractiveUtterance) {
+            currentInteractiveUtterance.onend = null;
+            currentInteractiveUtterance = null;
         }
         if (synth && synth.speaking) {
             try {
@@ -259,7 +287,8 @@
 
     function updateToggleButton(button, enabled) {
         if (!button) return;
-        if (enabled) {
+        button.disabled = !synthesisAvailable;
+        if (enabled && synthesisAvailable) {
             button.classList.remove("btn-danger");
             button.classList.add("btn-success");
             button.title = "Nonaktifkan Pembaca Teks";
@@ -274,12 +303,13 @@
 
     function initializeGlobalSpeech() {
         checkBrowserSupport();
-
         if (synthesisAvailable) {
-            loadVoices();
-            if (synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = loadVoices;
-            }
+            setTimeout(() => {
+                loadVoices();
+                if (synth && synth.onvoiceschanged !== undefined) {
+                    synth.onvoiceschanged = loadVoices;
+                }
+            }, 100);
 
             if (toggleBtn) {
                 updateToggleButton(toggleBtn, window.speechEnabled);
@@ -291,9 +321,7 @@
                     }
                 });
             } else {
-                console.warn(
-                    "#btnToggleSpeech element not found. TTS defaults to enabled state."
-                );
+                if (!synthesisAvailable) window.speechEnabled = false;
             }
         } else {
             window.speechEnabled = false;
@@ -305,5 +333,9 @@
         console.log(`Feedback (${type}): ${message}`);
     }
 
-    document.addEventListener("DOMContentLoaded", initializeGlobalSpeech);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeGlobalSpeech);
+    } else {
+        initializeGlobalSpeech();
+    }
 })();
