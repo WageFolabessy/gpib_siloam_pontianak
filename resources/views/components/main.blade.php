@@ -27,6 +27,20 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
         }
 
+        #speech-rec-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 90px;
+            width: 60px;
+            height: 60px;
+            z-index: 1050;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
+        }
+
+
         @media (max-width:576px) {
             #chatButton {
                 bottom: 15px;
@@ -37,6 +51,18 @@
 
             #chatButton i {
                 font-size: 20px;
+            }
+
+            #speech-rec-toggle {
+                bottom: 15px;
+                right: 75px;
+                width: 50px;
+                height: 50px;
+            }
+
+            #speech-rec-toggle i {
+                font-size: 20px;
+
             }
         }
 
@@ -67,6 +93,13 @@
 
     @include('components.footer')
 
+    <button type="button" class="btn btn-success rounded-circle" id="speech-rec-toggle"
+        title="Aktifkan Perintah Suara" aria-label="Kontrol Perintah Suara">
+        <i class="fas fa-microphone-slash"></i> {{-- Ikon awal --}}
+    </button>
+    <span id="speech-rec-status" class="visually-hidden">Perintah Suara Nonaktif</span>
+
+
     {{-- Tombol Chat Fixed --}}
     <button type="button" class="btn btn-primary rounded-circle" id="chatButton" data-bs-toggle="modal"
         data-bs-target="#chatModal" aria-label="Buka Chat">
@@ -85,7 +118,7 @@
     @vite('resources/js/app.js')
 
     <script src="{{ asset('assets/pages/js/speechsynthesis/index.js') }}"></script>
-    <script src="{{ asset('assets/pages/js/speechsynthesis/tsa.js') }}"></script>
+    <script src="{{ asset('assets/pages/js/speechsynthesis/sta.js') }}"></script>
     <script src="{{ asset('assets/pages/js/chat/chat-user.js') }}"></script>
 
     <script type="module">
