@@ -41,7 +41,7 @@
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body speakable">
-                        <h4 class="card-title text-center">Sejarah</h4>
+                        <h4 class="card-title text-center text-brown">Sejarah</h4>
                         <p class="card-text text-justify">
                             "SILOAM" adalah nama Jemaat yang ditetapkan berdasarkan Surat
                             Penjerahan, tertanggal Pontianak 29 September 1963 dari Panitia
@@ -64,7 +64,7 @@
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body speakable">
-                        <h4 class="card-title text-center">Visi</h4>
+                        <h4 class="card-title text-center text-brown">Visi</h4>
                         <p class="card-text text-center">
                             Gereja GPIB Jemaat SILOAM Pontianak memiliki visi untuk menjadi
                             Gereja yang mewujudkan damai sejahtera Allah bagi seluruh
@@ -79,7 +79,7 @@
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body speakable">
-                        <h4 class="card-title text-center">Misi</h4>
+                        <h4 class="card-title text-center text-brown">Misi</h4>
                         <ol>
                             <li>Menjadi Gereja yang terus menerus diperbaharui dengan bertolak dari firman Allah yang
                                 terwujud dalam perilaku warga gereja, baik dalam Persekutuan maupun dalam hidup
@@ -99,7 +99,7 @@
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body speakable">
-                        <h4 class="card-title">Pendeta yang Melayani Saat Ini</h4>
+                        <h4 class="card-title text-brown">Pendeta yang Melayani Saat Ini</h4>
                         <ul>
                             @php
                                 $foundKMJ = false;
@@ -129,7 +129,7 @@
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body speakable">
-                        <h4 class="card-title">Wilayah Pelayanan</h4>
+                        <h4 class="card-title text-brown">Wilayah Pelayanan</h4>
                         <ul>
                             <li>GPIB Jemaat "Siloam" Pontianak, Kota Pontianak</li>
                             <li>Bajem Tuah Petara Sintang, Kabupaten Sintang</li>

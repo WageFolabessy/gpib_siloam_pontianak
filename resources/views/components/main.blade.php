@@ -71,6 +71,77 @@
             line-height: 1;
             padding: 0.25em 0.5em;
         }
+
+        .btn-brown {
+            color: #fff !important;
+            /* Paksa warna teks putih */
+            background-color: #8E4818 !important;
+            border-color: #8E4818 !important;
+        }
+
+        .btn-brown:hover,
+        .btn-brown:focus,
+        .btn-brown.focus {
+            color: #fff !important;
+            background-color: #7b3e14 !important;
+            border-color: #703712 !important;
+            box-shadow: 0 0 0 0.25rem rgba(142, 72, 24, 0.5) !important;
+        }
+
+        .btn-brown:active,
+        .btn-brown.active {
+            color: #fff !important;
+            background-color: #703712 !important;
+            border-color: #643110 !important;
+        }
+
+        .btn-brown:focus {
+            box-shadow: 0 0 0 0.25rem rgba(142, 72, 24, 0.5) !important;
+        }
+
+
+        .btn-brown:disabled,
+        .btn-brown.disabled {
+            color: #fff !important;
+            background-color: #8E4818 !important;
+            border-color: #8E4818 !important;
+        }
+
+        :root {
+            --custom-brown: #8E4818;
+            --custom-brown-rgb: 142, 72, 24;
+            --custom-brown-text-hover: #fff;
+        }
+
+        .btn-outline-brown {
+            --bs-btn-color: var(--custom-brown);
+            --bs-btn-border-color: var(--custom-brown);
+
+            --bs-btn-hover-color: var(--custom-brown-text-hover);
+            --bs-btn-hover-bg: var(--custom-brown);
+            --bs-btn-hover-border-color: var(--custom-brown);
+
+            --bs-btn-focus-shadow-rgb: var(--custom-brown-rgb);
+
+            --bs-btn-active-color: var(--custom-brown-text-hover);
+            --bs-btn-active-bg: var(--custom-brown);
+            --bs-btn-active-border-color: var(--custom-brown);
+            --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+
+            --bs-btn-disabled-color: var(--custom-brown);
+            --bs-btn-disabled-bg: transparent;
+            --bs-btn-disabled-border-color: var(--custom-brown);
+            --bs-gradient: none;
+        }
+
+        .text-brown {
+            color: var(--custom-brown) !important;
+        }
+
+        a.text-brown:hover,
+        a.text-brown:focus {
+            color: var(--custom-brown-darker) !important;
+        }
     </style>
 </head>
 
@@ -93,8 +164,8 @@
 
     @include('components.footer')
 
-    <button type="button" class="btn btn-success rounded-circle" id="speech-rec-toggle"
-        title="Aktifkan Perintah Suara" aria-label="Kontrol Perintah Suara">
+    <button type="button" class="btn btn-brown rounded-circle" id="speech-rec-toggle" title="Aktifkan Perintah Suara"
+        aria-label="Kontrol Perintah Suara">
         <i class="fas fa-microphone-slash"></i> {{-- Ikon awal --}}
     </button>
     <span id="speech-rec-status" class="visually-hidden">Perintah Suara Nonaktif</span>

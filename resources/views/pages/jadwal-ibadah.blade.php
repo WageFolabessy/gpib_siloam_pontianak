@@ -4,7 +4,7 @@
     - Jadwal Ibadah
 @endsection
 
-@section('css')
+@section('style')
     <style>
         .speakable {
             cursor: pointer;
@@ -18,7 +18,7 @@
 
 @section('content')
     <div class="container mt-4">
-        <h2 class="text-center mb-4 display-6 speakable">Jadwal Ibadah Rutin</h2>
+        <h2 class="text-center mb-4 display-6 speakable text-brown">Jadwal Ibadah Rutin</h2>
 
         <div class="card mb-4 speakable" id="jadwal-minggu-card">
             <div class="card-header bg-chocolate text-white">
