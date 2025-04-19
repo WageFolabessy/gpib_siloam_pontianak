@@ -4,7 +4,7 @@
         <div class="sidebar-brand-icon">
             <i><img src="{{ asset('assets/dashboard/salib.png') }}" alt="Logo" style="height: 35px; width: auto;"></i>
         </div>
-        <div class="sidebar-brand-text mx-3">GPIB SILOAM Ptk</div>
+        <div class="sidebar-brand-text mx-3">GPIB SILOAM</div>
     </a>
 
     <hr class="sidebar-divider my-0">
@@ -48,9 +48,9 @@
             <span>Tanya Jawab</span></a>
     </li>
 
-    <li class="nav-item {{ Route::is('dashboard.chat') ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('dashboard.chat') }}"
-            @if (Route::is('dashboard.chat')) aria-current="page" @endif>
+    <li class="nav-item {{ Route::is('admin.chat.index') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('admin.chat.index') }}"
+            @if (Route::is('admin.chat.index')) aria-current="page" @endif>
             <i class="fas fa-fw fa-comments"></i>
             <span>Chat</span></a>
     </li>

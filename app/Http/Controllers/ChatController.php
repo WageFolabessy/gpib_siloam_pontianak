@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\MessageRead;
-use App\Events\UserMessageSent;
-use App\Events\AdminMessageSent;
-use App\Models\Chat;
-use App\Models\TemplateTanyaJawab;
-use App\Models\User;
+use App\Events\NewUserMessageForAdmin;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use App\Models\Chat;
+use App\Models\User;
+use App\Models\AdminUser;
+use App\Models\TemplateTanyaJawab;
+use App\Events\MessageSent;
+use App\Events\MessagesMarkedAsRead;
+use App\Http\Resources\ChatResource;
+use Yajra\DataTables\Facades\DataTables;
 
 class ChatController extends Controller
 {
@@ -23,203 +26,284 @@ class ChatController extends Controller
 
     public function templateTanyaJawab()
     {
-        return response()->json(TemplateTanyaJawab::all());
+        try {
+            $templates = TemplateTanyaJawab::all(['pertanyaan', 'jawaban']);
+            return response()->json($templates);
+        } catch (\Exception $e) {
+            Log::error('Error fetching chat templates: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal memuat template'], 500);
+        }
     }
 
-    public function sendAdminTemplate(Request $request)
-    {
-        $validated = $request->validate([
-            'message'           => 'required|string|max:1000',
-            'target'            => 'required|integer',
-            'client_message_id' => 'nullable|string',
-        ]);
-
-        Chat::create([
-            'user_id'     => $validated['target'],
-            'sender_id'   => 0,
-            'sender_type' => 'admin',
-            'message'     => $validated['message'],
-        ]);
-
-        AdminMessageSent::dispatch([
-            'message'           => $validated['message'],
-            'target'            => $validated['target'],
-            'timestamp'         => now()->toIso8601String(),
-            'client_message_id' => $validated['client_message_id'] ?? null,
-        ]);
-
-        return response()->json(['message' => 'Template jawaban terkirim'], 201);
-    }
-
-    public function sendUserMessage(Request $request)
+    public function storeUserMessage(Request $request)
     {
         $validated = $request->validate([
             'message'           => 'required|string|max:2000',
-            'client_message_id' => 'nullable|string',
+            'client_message_id' => 'nullable|string|max:36',
         ]);
 
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
+
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        Chat::create([
-            'user_id'     => $user->id,
-            'sender_id'   => $user->id,
-            'sender_type' => 'user',
-            'message'     => $validated['message'],
-        ]);
+        try {
+            $chat = $user->sentChats()->create([
+                'user_id' => $user->id,
+                'message' => $validated['message'],
+            ]);
+            $chat->load('sender');
 
-        UserMessageSent::dispatch([
-            'message'           => $validated['message'],
-            'user_id'           => $user->id,
-            'user_name'         => $user->name,
-            'timestamp'         => now()->toIso8601String(),
-            'client_message_id' => $validated['client_message_id'] ?? null,
-        ]);
+            broadcast(new MessageSent($chat))->toOthers();
 
-        return response()->json(['message' => 'Message sent successfully'], 201);
+            broadcast(new NewUserMessageForAdmin($chat));
+
+            return response()->json([
+                'message' => 'Pesan berhasil terkirim',
+                'data'    => new ChatResource($chat)
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error("Error storing user message for User ID {$user->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Gagal menyimpan pesan'], 500);
+        }
     }
 
-    public function sendAdminMessage(Request $request)
+    public function storeAdminMessage(Request $request)
     {
         $validated = $request->validate([
             'message'           => 'required|string|max:2000',
-            'target'            => 'required|integer',
-            'client_message_id' => 'nullable|string',
+            'target_user_id'    => 'required|integer|exists:users,id',
+            'client_message_id' => 'nullable|string|max:36',
         ]);
 
+        /** @var \App\Models\AdminUser|null $admin */
         $admin = Auth::guard('admin_users')->user();
+
         if (!$admin) {
+            return response()->json(['message' => 'Unauthorized (Admin)'], 401);
+        }
+
+        try {
+            $chat = $admin->sentChats()->create([
+                'user_id' => $validated['target_user_id'],
+                'message' => $validated['message'],
+            ]);
+
+            $chat->load('sender');
+
+            broadcast(new MessageSent($chat))->toOthers();
+
+            return response()->json([
+                'message' => 'Pesan admin berhasil terkirim',
+                'data'    => new ChatResource($chat)
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error("Error storing admin message from Admin ID {$admin->id} to User ID {$validated['target_user_id']}: " . $e->getMessage());
+            return response()->json(['message' => 'Gagal menyimpan pesan admin'], 500);
+        }
+    }
+
+    public function sendAdminTemplateMessage(Request $request)
+    {
+        $validated = $request->validate([
+            'message'           => 'required|string|max:2000',
+            'target_user_id'    => 'required|integer|exists:users,id',
+            'client_message_id' => 'nullable|string|max:36',
+        ]);
+
+        /** @var \App\Models\AdminUser|null $admin */
+        $admin = Auth::guard('admin_users')->user();
+
+        if (!$admin) {
+            return response()->json(['message' => 'Unauthorized (Admin)'], 401);
+        }
+
+        try {
+            $chat = $admin->sentChats()->create([
+                'user_id' => $validated['target_user_id'],
+                'message' => $validated['message'],
+            ]);
+
+            $chat->load('sender');
+
+            broadcast(new MessageSent($chat))->toOthers();
+
+            return response()->json([
+                'message' => 'Template jawaban berhasil terkirim',
+                'data'    => new ChatResource($chat)
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error("Error sending admin template message from Admin ID {$admin->id} to User ID {$validated['target_user_id']}: " . $e->getMessage());
+            return response()->json(['message' => 'Gagal mengirim template jawaban'], 500);
+        }
+    }
+
+    public function getChatHistoryForAdmin(User $user)
+    {
+        try {
+            $messages = Chat::where('user_id', $user->id)
+                ->with('sender')
+                ->orderBy('created_at', 'asc')
+                ->paginate(30);
+
+            return ChatResource::collection($messages);
+        } catch (\Exception $e) {
+            Log::error("Error fetching chat history for admin (Target User ID: {$user->id}): " . $e->getMessage());
+            return response()->json(['error' => 'Gagal memuat riwayat chat'], 500);
+        }
+    }
+
+    public function getMyChatHistory(Request $request)
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        Chat::create([
-            'user_id'     => $validated['target'],
-            'sender_id'   => $admin->id,
-            'sender_type' => 'admin',
-            'message'     => $validated['message'],
-        ]);
+        try {
+            $messages = Chat::where('user_id', $user->id)
+                ->with('sender')
+                ->orderBy('created_at', 'asc')
+                ->paginate(30);
 
-        AdminMessageSent::dispatch([
-            'message'           => $validated['message'],
-            'target'            => $validated['target'],
-            'timestamp'         => now()->toIso8601String(),
-            'client_message_id' => $validated['client_message_id'] ?? null,
-        ]);
-
-        return response()->json(['message' => 'Admin message sent successfully'], 201);
-    }
-
-    public function getUserMessages($userId)
-    {
-        $admin = Auth::guard('admin_users')->user();
-        if (!$admin) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return ChatResource::collection($messages);
+        } catch (\Exception $e) {
+            Log::error("Error fetching user chat history (User ID: {$user->id}): " . $e->getMessage());
+            return response()->json(['error' => 'Gagal memuat riwayat chat Anda'], 500);
         }
-
-        $messages = Chat::with('user')
-            ->where('user_id', $userId)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->each(function ($msg) {
-                $msg->timestamp  = $msg->created_at->toIso8601String();
-                $msg->sender     = $msg->sender_type;
-                $msg->user_name  = ($msg->sender_type === 'user' && $msg->user) ? $msg->user->name : 'Admin';
-            });
-
-        return response()->json($messages);
     }
 
-    public function getChatUsers(Request $request)
+    public function getChatUsersForDataTable(Request $request)
     {
-        $chats = Chat::select(
-            'user_id',
-            DB::raw('MAX(id) as last_chat_id'),
-            DB::raw('MAX(created_at) as last_timestamp')
-        )
-            ->groupBy('user_id')
-            ->orderBy(DB::raw('MAX(created_at)'), 'desc');
+        try {
+            $latestChatsSub = Chat::select('user_id', DB::raw('MAX(id) as last_chat_id'))
+                ->groupBy('user_id');
 
-        return DataTables::of($chats)
-            ->addIndexColumn()
-            ->addColumn('nama_pengguna', function ($chat) {
-                $user = User::find($chat->user_id);
-                return $user ? $user->name : $chat->user_id;
-            })
-            ->addColumn('unread', function ($chat) {
-                // Hitung pesan dari user yang belum dibaca (read_at null) di percakapan ini
-                $unreadCount = Chat::where('user_id', $chat->user_id)
-                    ->where('sender_type', 'user')
-                    ->whereNull('read_at')
-                    ->count();
-                return $unreadCount > 0
-                    ? '<span class="badge bg-danger">' . $unreadCount . '</span>'
-                    : '';
-            })
-            ->addColumn('pesan_terakhir', function ($chat) {
-                $lastMessage = Chat::find($chat->last_chat_id);
-                return $lastMessage ? substr($lastMessage->message, 0, 50) : '';
-            })
-            ->addColumn('waktu', function ($chat) {
-                return Carbon::parse($chat->last_timestamp)->diffForHumans();
-            })
-            ->addColumn('aksi', function ($chat) {
-                $user = User::find($chat->user_id);
-                $userName = $user ? $user->name : $chat->user_id;
-                $conversation = json_encode([
-                    'user_id'   => $chat->user_id,
-                    'user_name' => $userName,
-                ]);
-                return '<a href="#" class="btn btn-primary btn-sm openChatModal" data-bs-toggle="modal" data-bs-target="#chatDetailModal" data-conversation=\'' . $conversation . '\'>Lihat Chat</a>';
-            })
-            ->rawColumns(['aksi', 'unread'])
-            ->make(true);
-    }
+            $chats = Chat::select(
+                'chats.user_id',
+                'users.name as user_name',
+                'last_chat.message as last_message_body',
+                'chats.created_at as last_timestamp',
+                DB::raw("(SELECT COUNT(*) FROM chats as unread_chats
+                          WHERE unread_chats.user_id = chats.user_id
+                            AND unread_chats.sender_type = ?
+                            AND unread_chats.read_at IS NULL) as unread_user_messages_count")
+            )
+                ->joinSub($latestChatsSub, 'latest_chats', function ($join) {
+                    $join->on('chats.id', '=', 'latest_chats.last_chat_id');
+                })
+                ->join('users', 'chats.user_id', '=', 'users.id')
+                ->join('chats as last_chat', 'chats.id', '=', 'last_chat.id')
+                ->addBinding(User::class, 'select');
 
-
-    public function getMessagesForUser(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json([]);
+            return DataTables::of($chats)
+                ->addIndexColumn()
+                ->addColumn('nama_pengguna', function ($chat) {
+                    return $chat->user_name ?? 'User ID: ' . $chat->user_id;
+                })
+                ->addColumn('unread', function ($chat) {
+                    return $chat->unread_user_messages_count > 0
+                        ? '<span class="badge bg-danger">' . $chat->unread_user_messages_count . '</span>'
+                        : '';
+                })
+                ->addColumn('pesan_terakhir', function ($chat) {
+                    return $chat->last_message_body ? \Illuminate\Support\Str::limit($chat->last_message_body, 50) : '';
+                })
+                ->addColumn('waktu', function ($chat) {
+                    try {
+                        return Carbon::parse($chat->last_timestamp)->locale('id')->diffForHumans();
+                    } catch (\Exception $e) {
+                        Log::warning("Could not parse timestamp for chat user_id {$chat->user_id}: {$chat->last_timestamp}");
+                        return '-';
+                    }
+                })
+                ->addColumn('aksi', function ($chat) {
+                    $conversation = json_encode([
+                        'user_id'   => $chat->user_id,
+                        'user_name' => $chat->user_name ?? 'User ID: ' . $chat->user_id,
+                    ]);
+                    return '<a href="#" class="btn btn-primary btn-sm openChatModal" data-bs-toggle="modal" data-bs-target="#chatDetailModal" data-conversation=\'' . e($conversation) . '\'>Lihat Chat</a>';
+                })
+                ->rawColumns(['aksi', 'unread'])
+                ->orderColumn('last_timestamp', function ($query, $order) {
+                    $query->orderBy('chats.created_at', $order);
+                })
+                ->make(true);
+        } catch (\Exception $e) {
+            Log::error('Error generating chat users datatable: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json(['error' => 'Gagal memuat daftar chat pengguna.'], 500);
         }
-
-        $messages = Chat::where('user_id', $user->id)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return response()->json($messages);
     }
 
-    public function markAsRead(Request $request, $userId = null)
+    public function markAsRead(Request $request)
     {
-        // Untuk admin membaca pesan user
+        $userIdToUpdate = null;
+        $reader = null;
+        $readerType = null;
+        $messagesFromType = null;
+
         if (Auth::guard('admin_users')->check()) {
-            if (!$userId) {
-                return response()->json(['message' => 'Missing user id'], 400);
-            }
-            $updated = Chat::where('user_id', $userId)
-                ->where('sender_type', 'user')
-                ->whereNull('read_at')
-                ->update(['read_at' => Carbon::now()]);
-            if ($updated) {
-                // Broadcast event agar user yang mengirim pesan (sender_type "user") mendapat notifikasi
-                event(new MessageRead(['user_id' => $userId], 'user'));
-            }
-            return response()->json(['message' => 'Admin: Pesan user berhasil ditandai sudah dibaca'], 200);
+            $validated = $request->validate(['user_id' => 'required|integer|exists:users,id']);
+            $userIdToUpdate = $validated['user_id'];
+            $reader = Auth::guard('admin_users')->user();
+            $readerType = 'admin';
+            $messagesFromType = User::class;
+        } elseif (Auth::guard('web')->check()) {
+            $reader = Auth::guard('web')->user();
+            $userIdToUpdate = $reader->id;
+            $readerType = 'user';
+            $messagesFromType = AdminUser::class;
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
-        // Untuk user membaca pesan admin
-        if (Auth::guard('users')->check()) {
-            $updated = Chat::where('user_id', Auth::user()->id)
-                ->where('sender_type', 'admin')
+
+        try {
+            $now = Carbon::now();
+            $updatedCount = 0;
+            $lastReadMessageId = null;
+
+            $lastUnreadMessage = Chat::where('user_id', $userIdToUpdate)
+                ->where('sender_type', $messagesFromType) // <-- Perhatikan ini
                 ->whereNull('read_at')
-                ->update(['read_at' => Carbon::now()]);
-            if ($updated) {
-                event(new MessageRead(['user_id' => Auth::user()->id], 'admin'));
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($lastUnreadMessage) {
+                $lastReadMessageId = $lastUnreadMessage->id;
+
+                $updatedCount = Chat::where('user_id', $userIdToUpdate)
+                    ->where('sender_type', $messagesFromType) // <-- Perhatikan ini juga
+                    ->whereNull('read_at')
+                    ->where('id', '<=', $lastReadMessageId)
+                    ->update(['read_at' => $now]); // <-- Perintah UPDATE
+
+                Log::info("Updated count for markAsRead: " . $updatedCount); // (Tambahkan log ini untuk debug)
+            } else {
+                Log::info("No unread messages found to mark as read."); // (Tambahkan log ini untuk debug)
             }
-            return response()->json(['message' => 'User: Pesan admin berhasil ditandai sudah dibaca'], 200);
+
+
+            // 3. Broadcast jika ada yg terupdate ($updatedCount > 0)
+            if ($updatedCount > 0 && $lastReadMessageId !== null) {
+                broadcast(new MessagesMarkedAsRead(
+                    $userIdToUpdate,
+                    $readerType,
+                    $now->toIso8601String(),
+                    $lastReadMessageId
+                ));
+            }
+
+            return response()->json([
+                'message' => 'Pesan berhasil ditandai sudah dibaca',
+                'updated_count' => $updatedCount
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error marking messages as read (Thread User ID: {$userIdToUpdate}, Reader: {$readerType}): " . $e->getMessage());
+            return response()->json(['message' => 'Gagal menandai pesan sebagai dibaca'], 500);
         }
-        return response()->json(['message' => 'Unauthorized'], 401);
     }
 }

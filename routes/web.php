@@ -46,31 +46,50 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/info', 'info')->name('info');
 });
 
-Route::post('send-user-message', [ChatController::class, 'sendUserMessage'])
-    ->name('chat.user.send');
-Route::post('/mark-chat-read/{userId?}', [ChatController::class, 'markAsRead'])->name('chat.mark-read');
+Route::get('/chat-templates', [ChatController::class, 'templateTanyaJawab'])
+    ->name('chat.templates');
 
-Route::middleware('auth:admin_users')->group(function () {
-    Route::post('send-admin-message', [ChatController::class, 'sendAdminMessage'])
-        ->name('chat.admin.send');
+// --- Rute yang memerlukan login (User Jemaat ATAU Admin) ---
+Route::post('/chat/mark-read', [ChatController::class, 'markAsRead'])
+    ->middleware(['auth:web,admin_users']) // Membutuhkan login (bisa user atau admin)
+    ->name('chat.markread');
 
-    Route::get('admin/messages/{userId}', [ChatController::class, 'getUserMessages'])
-        ->name('chat.admin.getMessages');
+// --- Rute Khusus User Jemaat (Guard 'web') ---
+Route::middleware(['auth:web'])->prefix('chat')->name('user.chat.')->group(function () {
+    // Mengambil history chat milik user yang login
+    Route::get('/my-history', [ChatController::class, 'getMyChatHistory'])
+        ->name('history'); // Nama route: user.chat.history
 
-    Route::get('get-chat-users', [ChatController::class, 'getChatUsers'])
-        ->name('chat.users');
-
-    Route::get('dashboard/chat', [ChatController::class, 'index'])
-        ->name('dashboard.chat');
+    // User mengirim pesan
+    Route::post('/send-user', [ChatController::class, 'storeUserMessage'])
+        ->name('send'); // Nama route: user.chat.send
 });
 
-Route::get('user/messages', [ChatController::class, 'getMessagesForUser'])
-    ->name('chat.user.getMessages');
+// --- Rute Khusus Admin (Guard 'admin_users') ---
+Route::middleware(['auth:admin_users'])->prefix('dashboard/chat')->name('admin.chat.')->group(function () {
+    // Menampilkan halaman utama daftar chat admin
+    Route::get('/', [ChatController::class, 'index'])
+        ->name('index'); // Nama route: admin.chat.index
 
-Route::get('template_tanya_jawab', [ChatController::class, 'templateTanyaJawab']);
+    // Endpoint untuk DataTables daftar chat user
+    Route::get('/users-datatable', [ChatController::class, 'getChatUsersForDataTable'])
+        ->name('users.datatable'); // Nama route: admin.chat.users.datatable
 
-Route::post('send-admin-template', [ChatController::class, 'sendAdminTemplate'])
-    ->name('chat.admin.template');
+    // Mengambil history chat user tertentu (menggunakan Route Model Binding {user})
+    Route::get('/history/{user}', [ChatController::class, 'getChatHistoryForAdmin'])
+        // ->where('user', '[0-9]+') // Opsional: batasi parameter hanya angka
+        ->name('history'); // Nama route: admin.chat.history
+
+    // Admin mengirim pesan balasan
+    Route::post('/send-admin', [ChatController::class, 'storeAdminMessage'])
+        ->name('send.admin'); // Nama route: admin.chat.send.admin
+
+    // Admin mengirim pesan template (jika fitur ini tetap digunakan)
+    Route::post('/send-template', [ChatController::class, 'sendAdminTemplateMessage'])
+        ->name('send.template'); // Nama route: admin.chat.send.template
+
+    // Catatan: Route untuk markAsRead sudah di luar grup ini karena bisa diakses user juga
+});
 
 Route::middleware('guest:admin_users')->group(function () {
     Route::get('/admin/login', [AdminAuthController::class, 'index'])->name('admin.login');
