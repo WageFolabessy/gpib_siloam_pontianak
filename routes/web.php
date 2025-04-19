@@ -10,32 +10,27 @@ use App\Http\Controllers\PendetaController;
 use App\Http\Controllers\RenunganController;
 use App\Http\Controllers\TemplateTanyaJawabController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\UserAuthController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest:users')->group(function () {
-    Route::get('/login_jemaat', function () {
-        return view('pages.login');
-    })->name('pages.login');
+Route::controller(UserAuthController::class)->group(function () {
+    // Login
+    Route::get('/login', 'showLoginForm')->name('pages.login')->middleware('guest:web');
+    Route::post('/login', 'login')->name('login_jemaat')->middleware('guest:web');
+    // Logout
+    Route::post('/logout', 'logout')->name('jemaat_logout')->middleware('auth:web');
+    // Forgot Password
+    Route::get('/lupa-password', 'showLinkRequestForm')->name('password.request')->middleware('guest:web');
+    Route::post('/lupa-password', 'sendResetLinkEmail')->name('password.email')->middleware('guest:web');
+    // Reset Password
+    Route::get('/reset-password/{token}', 'showResetForm')->name('password.reset')->middleware('guest:web');
+    Route::post('/reset-password', 'reset')->name('password.update')->middleware('guest:web');
+    // Register
+    Route::get('/register', 'showRegistrationForm')->name('pages.register')->middleware('guest:web');
+    Route::post('/register', 'register')->name('register_jemaat')->middleware('guest:web');
 
-    Route::get('/register_jemaat', function () {
-        return view('pages.register');
-    })->name('pages.register');
-
-    Route::get('/request_password', function () {
-        return view('pages.request_password');
-    })->name('pages.request_password');
-
-    Route::post('/request_password', [PasswordResetController::class, 'sendResetLinkEmail'])
-        ->name('password.email');
-
-    Route::get('/password/reset/{token}', [PasswordResetController::class, 'showResetForm'])
-        ->name('password.reset');
-
-    Route::post('/reset_password', [PasswordResetController::class, 'reset'])
-        ->name('password.update');
-
-    Route::post('/register_jemaat', [PageController::class, 'register'])->name('register_jemaat');
-    Route::post('/login_jemaat', [PageController::class, 'login'])->name('login_jemaat');
+    Route::get('/profil', 'showProfileForm')->name('profil')->middleware('auth:web');
+    Route::put('/profil', 'updateProfile')->name('profil.update')->middleware('auth:web');
 });
 
 Route::controller(PageController::class)->group(function () {
@@ -49,12 +44,6 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/renungan/{renungan:slug}', 'detailRenungan')->name('detail-renungan');
 
     Route::get('/info', 'info')->name('info');
-});
-
-Route::middleware('auth:users')->group(function () {
-    Route::post('/jemaat_logout', [PageController::class, 'logout'])->name('jemaat_logout');
-    Route::get('/profil', [PageController::class, 'profilPage'])->name('profil');
-    Route::put('/profil/update', [PageController::class, 'updateProfile'])->name('profil.update');
 });
 
 Route::post('send-user-message', [ChatController::class, 'sendUserMessage'])

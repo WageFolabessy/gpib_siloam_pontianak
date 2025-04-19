@@ -7,13 +7,13 @@ return [
     | Authentication Defaults
     |--------------------------------------------------------------------------
     |
-    | Option default untuk guard dan broker password. Jika tidak diubah di
-    | environment, maka nilai defaultnya adalah 'web' dan 'users'.
-    |
+    | Opsi default untuk guard dan broker password.
+    | Default guard diubah ke 'web' untuk konsistensi Laravel.
+    | Default password broker tetap 'users' untuk user biasa (Jemaat).
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'users'),
+        'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -22,13 +22,12 @@ return [
     | Authentication Guards
     |--------------------------------------------------------------------------
     |
-    | Guard digunakan untuk mendefinisikan bagaimana pengguna diotentikasi
-    | untuk setiap request. Di sini kita mendefinisikan guard untuk web dan admin.
-    |
+    | Mendefinisikan guard 'web' untuk Jemaat (user biasa) dan
+    | 'admin_users' untuk Admin. Keduanya menggunakan session driver.
     */
 
     'guards' => [
-        'users' => [
+        'web' => [
             'driver' => 'session',
             'provider' => 'users',
         ],
@@ -44,10 +43,7 @@ return [
     | User Providers
     |--------------------------------------------------------------------------
     |
-    | Provider mendefinisikan cara untuk mengambil data dari database atau
-    | sumber penyimpanan lainnya. Di sini kita mendefinisikan provider untuk
-    | pengguna biasa dan admin.
-    |
+    | Mendefinisikan bagaimana data user diambil berdasarkan model Eloquent.
     */
 
     'providers' => [
@@ -67,9 +63,8 @@ return [
     | Resetting Passwords
     |--------------------------------------------------------------------------
     |
-    | Konfigurasi ini mengatur perilaku fitur reset password, termasuk table
-    | penyimpanan token reset, durasi token, dan throttle.
-    |
+    | Konfigurasi untuk broker reset password.
+    | Broker 'admin_users' sekarang direkomendasikan menggunakan tabel terpisah.
     */
 
     'passwords' => [
@@ -82,7 +77,7 @@ return [
 
         'admin_users' => [
             'provider' => 'admin_users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'table' => env('AUTH_ADMIN_PASSWORD_RESET_TOKEN_TABLE', 'admin_password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,
         ],
@@ -92,10 +87,8 @@ return [
     |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
-    |
-    | Durasi dalam detik sebelum pengguna harus mengonfirmasi ulang passwordnya.
-    |
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
 ];
