@@ -11,6 +11,13 @@ class Chat extends Model
         'sender_id',
         'sender_type',
         'message',
+        'read_at',
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'read_at' => 'datetime',
     ];
 
     public function user()

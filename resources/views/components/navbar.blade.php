@@ -36,15 +36,14 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item {{ Route::is('info') ? 'active' : '' }}"
                                 href="{{ route('info') }}">Info</a></li>
-                        {{-- Tambahkan item dropdown lain jika perlu --}}
                     </ul>
                 </li>
 
                 @auth('web')
-                    <li class="nav-item dropdown ms-lg-2"> {{-- Beri margin kiri di layar besar --}}
+                    <li class="nav-item dropdown ms-lg-2">
                         <a class="nav-link dropdown-toggle {{ Route::is('profil*') ? 'active' : '' }}" href="#"
                             role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i> {{-- Ganti ikon jika mau --}}
+                            <i class="fas fa-user-circle me-1"></i>
                             {{ Auth::user()->name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">

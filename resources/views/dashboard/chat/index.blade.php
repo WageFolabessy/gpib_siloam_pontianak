@@ -11,7 +11,6 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                {{-- Pastikan ID tabel ini "chatTable" sesuai dengan JS --}}
                 <table id="chatTable" class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
@@ -19,12 +18,11 @@
                             <th>Nama Pengguna</th>
                             <th>Pesan Terakhir</th>
                             <th>Waktu</th>
-                            <th>Belum dibaca</th> {{-- Pindah kolom unread sebelum Aksi --}}
+                            <th>Belum dibaca</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Body akan diisi oleh DataTables --}}
                     </tbody>
                 </table>
             </div>

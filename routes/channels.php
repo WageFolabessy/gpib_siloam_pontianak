@@ -6,38 +6,45 @@ use App\Models\User;
 use App\Models\AdminUser;
 
 Broadcast::channel('private-chat.user.{userId}', function ($loggedInUser, $userId) {
-    Log::info('--- Channel Auth Check ---');
-    Log::info('Attempting to authorize channel: private-chat.user.' . $userId);
+    Log::debug("[Channel Auth] Attempting to authorize channel: private-chat.user.{$userId}");
 
     if ($loggedInUser) {
-        Log::info('User Class: ' . get_class($loggedInUser));
-        Log::info('User ID: ' . $loggedInUser->id);
+        $userClass = get_class($loggedInUser);
+        $loggedInUserId = $loggedInUser->id;
+        Log::debug("[Channel Auth] Authenticated User Class: {$userClass}, ID: {$loggedInUserId}");
 
         if ($loggedInUser instanceof User) {
-            Log::info('Detected as instance of User (Jemaat).');
-            if ($loggedInUser->id == $userId) {
-                Log::info('Authorization SUCCESS: User ID matches channel user ID.');
+            Log::debug("[Channel Auth] User is instance of User.");
+            if ($loggedInUserId == $userId) {
+                Log::debug("[Channel Auth] SUCCESS: User ID matches channel ID.");
                 return true;
             } else {
-                Log::info('Authorization FAILED: User ID does not match channel user ID.');
+                Log::debug("[Channel Auth] FAILED: User ID does not match channel ID.");
+                return false;
             }
         } elseif ($loggedInUser instanceof AdminUser) {
-            Log::info('Detected as instance of AdminUser.');
-            Log::info('Authorization SUCCESS: User is Admin.');
+            Log::debug("[Channel Auth] User is instance of AdminUser.");
+            Log::debug("[Channel Auth] SUCCESS: User is Admin.");
             return true;
         } else {
-            Log::warning('Authorization FAILED: User is neither User nor AdminUser instance.');
+            Log::warning("[Channel Auth] FAILED: User is neither User nor AdminUser instance.");
+            return false;
         }
     } else {
-        Log::error('Authorization FAILED: No authenticated user provided to callback.');
+        Log::error("[Channel Auth] FAILED: No authenticated user provided.");
+        return false;
     }
+}, ['guards' => ['admin_users', 'web']]);
 
-    Log::warning('Authorization FAILED: Denying access to channel private-chat.user.' . $userId);
-    return false;
-}, ['guards' => ['web', 'admin_users']]);
 
 Broadcast::channel('admin-notifications', function ($loggedInUser) {
-    return $loggedInUser instanceof AdminUser;
+    Log::debug("[Channel Auth] Attempting to authorize channel: admin-notifications");
+    if ($loggedInUser && $loggedInUser instanceof AdminUser) {
+        Log::debug("[Channel Auth] SUCCESS: User is AdminUser instance.");
+        return true;
+    } else {
+        $userClass = $loggedInUser ? get_class($loggedInUser) : 'null';
+        Log::warning("[Channel Auth] FAILED: User is not AdminUser instance or not logged in. Class: {$userClass}");
+        return false;
+    }
 }, ['guards' => ['admin_users']]);
-
-

@@ -1,295 +1,221 @@
-// assets/dashboard/js/chat-user.js (Versi Real-time, Debounce diperbaiki)
-
 document.addEventListener("DOMContentLoaded", () => {
+    // --- Element References ---
     const chatModalElement = document.getElementById("chatModal");
-    const chatMessagesContainer = document.getElementById("chatMessages");
+    const chatMessagesElement = document.getElementById("chatMessages");
     const templateContainer = document.getElementById("templateTanyaJawab");
     const chatMessageForm = document.getElementById("chatMessageForm");
-    const chatInput = document.getElementById("chatInput");
+    const chatInputElement = document.getElementById("chatInput");
     const chatLoadingIndicator = document.getElementById(
         "chatLoadingIndicator"
     );
     const templateLoadingIndicator = document.getElementById(
         "templateLoadingIndicator"
     );
-    const chatBadge = document.getElementById("chatIconBadge"); // Asumsi ID badge
+    const chatIconBadge = document.getElementById("chatIconBadge");
 
-    if (!chatModalElement) {
-        console.warn(
-            "Chat modal element (#chatModal) not found. User chat disabled."
-        );
-        return;
-    }
+    if (!chatModalElement) return;
 
+    // --- State Variables ---
     const currentUserId = chatModalElement.dataset.userId || null;
     const isLoggedIn = !!currentUserId;
-    const apiClient = window.axios; // Prioritaskan Axios
-
+    const apiClient = window.axios;
     let currentPage = 1;
     let isLoadingHistory = false;
-    let hasMoreHistory = true;
-    let userEchoChannel = null;
-    let unreadCount = 0;
-    let markAsReadTimer = null; // Timer untuk debounce mark as read
+    let hasMorePages = true;
+    let echoChannel = null;
+    let unreadMessagesCount = 0;
+    let markAsReadTimeout = null;
 
     // --- Helper Functions ---
-    function escapeHTML(str) {
+    function sanitizeHTML(str) {
         if (str === null || str === undefined) return "";
-        str = String(str);
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        const map = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+        };
+        return String(str).replace(/[&<>"']/g, (m) => map[m]);
     }
 
     function formatTimestamp(isoString) {
         if (!isoString) return "";
         try {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString("id-ID", {
+            return new Date(isoString).toLocaleTimeString("id-ID", {
                 hour: "2-digit",
                 minute: "2-digit",
                 hour12: false,
             });
-        } catch (e) {
-            console.error(
-                "Error formatting timestamp:",
-                e,
-                "Input:",
-                isoString
-            );
+        } catch (error) {
+            console.error("Timestamp Format Error:", error);
             return "";
         }
     }
 
-    // === FIX: Tambahkan kembali fungsi debounce ===
-    function debounce(func, wait) {
-        let timer;
-        return function (...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => func.apply(this, args), wait);
-        };
-    }
-    // ==========================================
-
-    // --- UI Update Functions ---
-    function updateUnreadBadge() {
-        if (chatBadge) {
-            if (unreadCount > 0) {
-                chatBadge.textContent = unreadCount > 9 ? "9+" : unreadCount;
-                chatBadge.style.display = "flex";
-            } else {
-                chatBadge.style.display = "none";
-            }
+    function updateChatIconBadge() {
+        if (!chatIconBadge) return;
+        chatIconBadge.style.display = unreadMessagesCount > 0 ? "flex" : "none";
+        if (unreadMessagesCount > 0) {
+            chatIconBadge.textContent =
+                unreadMessagesCount > 9 ? "9+" : unreadMessagesCount;
         }
     }
 
-    function scrollChatToBottom(force = false) {
-        if (chatMessagesContainer) {
-            const container = chatMessagesContainer;
-            const threshold = 150;
-            const shouldScroll =
-                force ||
-                container.scrollHeight -
-                    container.scrollTop -
-                    container.clientHeight <
-                    threshold;
-            if (shouldScroll) {
-                setTimeout(() => {
-                    container.scrollTop = container.scrollHeight;
-                }, 50);
-            }
+    function scrollToBottom(force = false) {
+        if (!chatMessagesElement) return;
+        const scrollThreshold = 150;
+        const isNearBottom =
+            chatMessagesElement.scrollHeight -
+                chatMessagesElement.scrollTop -
+                chatMessagesElement.clientHeight <
+            scrollThreshold;
+        if (force || isNearBottom) {
+            setTimeout(() => {
+                chatMessagesElement.scrollTop =
+                    chatMessagesElement.scrollHeight;
+            }, 50);
         }
     }
 
-    function displayChatMessage(messageData, prepend = false) {
-        if (!chatMessagesContainer || !messageData || !messageData.sender_type)
-            return;
+    function displayMessage(message, prepend = false) {
+        if (!chatMessagesElement || !message || !message.sender_type) return;
         if (chatLoadingIndicator) chatLoadingIndicator.style.display = "none";
-        const placeholder = chatMessagesContainer.querySelector(
-            ".no-messages-placeholder"
+        chatMessagesElement.querySelector(".no-messages-placeholder")?.remove();
+
+        const messageIdValue =
+            message.id ??
+            `optimistic_${Date.now()}_${Math.random()
+                .toString(36)
+                .substring(2, 9)}`;
+        const messageIdStr = String(messageIdValue);
+
+        if (
+            !messageIdStr.startsWith("optimistic_") &&
+            chatMessagesElement.querySelector(
+                `[data-message-id="${messageIdStr}"]`
+            )
+        )
+            return;
+
+        const messageWrapper = document.createElement("div");
+        messageWrapper.classList.add("mb-2", "d-flex");
+        messageWrapper.dataset.messageId = messageIdStr;
+        const isUserSender = message.sender_type === "user";
+        messageWrapper.classList.add(
+            isUserSender ? "justify-content-end" : "justify-content-start"
         );
-        if (placeholder) placeholder.remove();
 
-        const msgDiv = document.createElement("div");
-        msgDiv.classList.add("mb-2", "d-flex");
-        msgDiv.dataset.messageId = messageData.id || `optimistic_${Date.now()}`;
-
-        const isSentByUser = messageData.sender_type === "user";
-        msgDiv.classList.add(
-            isSentByUser ? "justify-content-end" : "justify-content-start"
-        );
-
-        const bubbleDiv = document.createElement("div");
-        bubbleDiv.classList.add("p-2", "rounded", "mw-75", "chat-bubble");
-        bubbleDiv.style.wordWrap = "break-word";
-        bubbleDiv.style.maxWidth = "75%";
-        bubbleDiv.classList.add(
-            isSentByUser ? "bg-primary" : "bg-secondary",
+        const bubble = document.createElement("div");
+        bubble.classList.add(
+            "p-2",
+            "rounded",
+            "mw-75",
+            "chat-bubble",
+            isUserSender ? "bg-primary" : "bg-secondary",
             "text-white"
         );
+        bubble.style.wordWrap = "break-word";
+        bubble.style.maxWidth = "75%";
 
-        if (!isSentByUser && messageData.sender_name) {
-            const senderNameSpan = document.createElement("small");
-            senderNameSpan.classList.add(
+        if (!isUserSender && message.sender_name) {
+            const senderNameElement = document.createElement("small");
+            senderNameElement.classList.add(
                 "d-block",
                 "fw-bold",
                 "mb-1",
                 "sender-name"
             );
-            senderNameSpan.textContent = escapeHTML(messageData.sender_name);
-            bubbleDiv.appendChild(senderNameSpan);
+            senderNameElement.textContent = sanitizeHTML(message.sender_name);
+            bubble.appendChild(senderNameElement);
         }
 
-        const messageText = document.createElement("div");
-        messageText.classList.add("message-body");
-        messageText.textContent = messageData.message;
-        bubbleDiv.appendChild(messageText);
+        const messageBody = document.createElement("div");
+        messageBody.classList.add("message-body");
+        messageBody.textContent = message.message;
+        bubble.appendChild(messageBody);
 
-        const timeSpan = document.createElement("small");
-        timeSpan.classList.add(
+        const timestampElement = document.createElement("small");
+        timestampElement.classList.add(
             "d-block",
             "mt-1",
             "text-end",
             "opacity-75",
             "message-timestamp"
         );
-        timeSpan.textContent = formatTimestamp(messageData.created_at) + " ";
+        timestampElement.textContent =
+            formatTimestamp(message.created_at) + " ";
 
-        if (isSentByUser) {
+        if (isUserSender) {
             const readIndicator = document.createElement("i");
-            readIndicator.classList.add("bi", "read-indicator");
-            if (messageData.read_at) {
-                readIndicator.classList.add("bi-check2-all", "text-info");
-            } else if (
-                !String(msgDiv.dataset.messageId).startsWith("optimistic_")
-            ) {
-                readIndicator.classList.add("bi-check2");
+            readIndicator.classList.add("fas", "read-indicator");
+            if (message.read_at) {
+                readIndicator.classList.add("fa-check-double", "text-info");
+            } else if (messageIdStr.startsWith("optimistic_")) {
+                readIndicator.classList.add("fa-clock", "text-warning");
             } else {
-                readIndicator.classList.add("bi-clock", "text-warning");
+                readIndicator.classList.add("fa-check");
             }
-            timeSpan.appendChild(readIndicator);
+            timestampElement.appendChild(readIndicator);
         }
-        bubbleDiv.appendChild(timeSpan);
-        msgDiv.appendChild(bubbleDiv);
+        bubble.appendChild(timestampElement);
+        messageWrapper.appendChild(bubble);
 
-        if (prepend) {
-            chatMessagesContainer.insertBefore(
-                msgDiv,
-                chatMessagesContainer.firstChild
-            );
-        } else {
-            chatMessagesContainer.appendChild(msgDiv);
-        }
-    }
-
-    function displayTemplateButtons(templates) {
-        if (!templateContainer || !templates) return;
-        if (templateLoadingIndicator) templateLoadingIndicator.remove();
-        templateContainer.innerHTML =
-            '<small class="text-muted d-block mb-1">Pilih pertanyaan cepat:</small>';
-        const buttonWrapper = document.createElement("div");
-        buttonWrapper.classList.add("d-flex", "flex-wrap", "gap-1");
-
-        templates.forEach((template) => {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.classList.add("btn", "btn-sm", "btn-outline-primary");
-            button.textContent = escapeHTML(template.pertanyaan);
-            button.onclick = () => handleTemplateClick(template);
-            buttonWrapper.appendChild(button);
-        });
-        templateContainer.appendChild(buttonWrapper);
-    }
-
-    function handleTemplateClick(template) {
-        const userQuestion = template.pertanyaan;
-        const adminAnswer = template.jawaban;
-
-        displayChatMessage({
-            id: `temp_q_${Date.now()}`,
-            sender_type: "user",
-            message: userQuestion,
-            created_at: new Date().toISOString(),
-        });
-        scrollChatToBottom(true);
-
-        if (isLoggedIn) {
-            sendUserMessageToServer(userQuestion);
-        } else {
-            setTimeout(() => {
-                displayChatMessage({
-                    id: `temp_a_${Date.now()}`,
-                    sender_type: "admin",
-                    sender_name: "Admin Gereja",
-                    message: adminAnswer,
-                    created_at: new Date().toISOString(),
-                });
-                scrollChatToBottom(true);
-            }, 750);
+        try {
+            if (prepend)
+                chatMessagesElement.insertBefore(
+                    messageWrapper,
+                    chatMessagesElement.firstChild
+                );
+            else chatMessagesElement.appendChild(messageWrapper);
+        } catch (error) {
+            console.error("DOM Append Error:", error);
         }
     }
 
-    // --- API Functions ---
     async function fetchHistory(page = 1) {
         if (!isLoggedIn || isLoadingHistory) return;
         isLoadingHistory = true;
         if (page === 1 && chatLoadingIndicator)
             chatLoadingIndicator.style.display = "flex";
-
         if (!apiClient) {
-            console.error("[ChatUser] Axios is not available.");
-            if (page === 1 && chatMessagesContainer)
-                chatMessagesContainer.innerHTML =
-                    '<div class="text-center text-danger p-3">Gagal memuat: API Client tidak ada.</div>';
-            if (chatLoadingIndicator)
-                chatLoadingIndicator.style.display = "none";
             isLoadingHistory = false;
             return;
         }
-
         try {
             const response = await apiClient.get(
                 `/chat/my-history?page=${page}`
             );
-            const paginatedData = response.data;
-
-            if (chatLoadingIndicator && page === 1)
+            const historyData = response.data;
+            if (page === 1 && chatLoadingIndicator)
                 chatLoadingIndicator.style.display = "none";
-
-            const messages = paginatedData.data;
-            const initialScrollHeight = chatMessagesContainer.scrollHeight;
+            const messages = historyData.data;
+            const currentScrollHeight = chatMessagesElement.scrollHeight;
 
             if (messages.length === 0 && page === 1) {
-                chatMessagesContainer.innerHTML =
-                    '<div class="text-center text-muted p-3 no-messages-placeholder">Belum ada pesan. Mulai percakapan!</div>';
+                chatMessagesElement.innerHTML =
+                    '<div class="text-center text-muted p-3 no-messages-placeholder">Belum ada pesan.</div>';
             } else {
-                messages
-                    .reverse()
-                    .forEach((message) => displayChatMessage(message, true));
+                messages.forEach((msg) => displayMessage(msg, true));
             }
-
             if (page === 1) {
                 markAdminMessagesAsRead();
-                scrollChatToBottom(true);
+                scrollToBottom(true);
             } else if (messages.length > 0) {
-                chatMessagesContainer.scrollTop =
-                    chatMessagesContainer.scrollHeight - initialScrollHeight;
+                chatMessagesElement.scrollTop =
+                    chatMessagesElement.scrollHeight - currentScrollHeight;
             }
-
-            hasMoreHistory = !!paginatedData.links.next;
-            currentPage = paginatedData.meta.current_page;
+            hasMorePages = !!historyData.links.next;
+            currentPage = historyData.meta.current_page;
         } catch (error) {
             console.error(
-                "[ChatUser] Error fetching history:",
+                "Fetch History Error:",
                 error.response?.data || error.message || error
             );
-            if (page === 1 && chatMessagesContainer) {
+            if (page === 1 && chatMessagesElement) {
                 if (chatLoadingIndicator)
                     chatLoadingIndicator.style.display = "none";
-                chatMessagesContainer.innerHTML =
+                chatMessagesElement.innerHTML =
                     '<div class="text-center text-danger p-3">Gagal memuat riwayat chat.</div>';
             }
         } finally {
@@ -297,279 +223,335 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function fetchTemplates() {
+    async function markAdminMessagesAsRead() {
+        if (!isLoggedIn || !apiClient) return;
+        clearTimeout(markAsReadTimeout);
+        markAsReadTimeout = setTimeout(async () => {
+            try {
+                await apiClient.post("/chat/mark-read");
+            } catch (error) {
+                console.error(
+                    "Mark Read Error:",
+                    error.response?.data || error.message
+                );
+            }
+        }, 750);
+    }
+
+    async function fetchAndDisplayTemplates() {
+        if (!templateContainer) return;
         if (templateLoadingIndicator)
             templateLoadingIndicator.style.display = "block";
+        templateContainer.innerHTML = "";
+        templateContainer.appendChild(templateLoadingIndicator);
         if (!apiClient) {
-            console.error("[ChatUser] Axios is not available for templates.");
-            if (templateContainer)
-                templateContainer.innerHTML =
-                    '<small class="text-danger">Gagal memuat template: API Client tidak ada.</small>';
-            if (templateLoadingIndicator)
-                templateLoadingIndicator.style.display = "none";
+            templateContainer.innerHTML =
+                '<small class="text-danger">Gagal: API Client tidak ada.</small>';
             return;
         }
         try {
             const response = await apiClient.get("/chat-templates");
-            displayTemplateButtons(response.data);
+            displayTemplates(response.data);
         } catch (error) {
             console.error(
-                "[ChatUser] Error fetching templates:",
+                "Fetch Templates Error:",
                 error.response?.data || error.message || error
             );
-            if (templateContainer)
-                templateContainer.innerHTML =
-                    '<small class="text-danger">Gagal memuat template.</small>';
+            templateContainer.innerHTML =
+                '<small class="text-danger">Gagal memuat template.</small>';
         } finally {
             if (templateLoadingIndicator)
                 templateLoadingIndicator.style.display = "none";
         }
     }
 
-    async function sendUserMessageToServer(messageText) {
-        if (!isLoggedIn || !messageText || !apiClient) return;
+    function displayTemplates(templates) {
+        if (!templateContainer) return;
+        templateContainer.querySelector("#templateLoadingIndicator")?.remove();
+        templateContainer.innerHTML = "";
+        if (!templates || templates.length === 0) {
+            templateContainer.innerHTML =
+                '<small class="text-muted">Tidak ada pertanyaan cepat tersedia.</small>';
+            return;
+        }
+        templateContainer.innerHTML =
+            '<small class="text-muted d-block mb-1">Pilih pertanyaan cepat:</small>';
+        const buttonWrapper = document.createElement("div");
+        buttonWrapper.classList.add("d-flex", "flex-wrap", "gap-1");
+        templates.forEach((template) => {
+            if (!template.pertanyaan || !template.jawaban) return;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.classList.add("btn", "btn-sm", "btn-outline-primary");
+            button.textContent = sanitizeHTML(template.pertanyaan);
+            button.onclick = () => {
+                if (!chatMessagesElement) return;
+                displayMessage(
+                    {
+                        id: `temp_q_${Date.now()}`,
+                        sender_type: "user",
+                        message: template.pertanyaan,
+                        created_at: new Date().toISOString(),
+                    },
+                    false
+                );
+                scrollToBottom(true);
+                setTimeout(() => {
+                    displayMessage(
+                        {
+                            id: `temp_a_${Date.now()}`,
+                            sender_type: "admin",
+                            sender_name: "Admin Gereja",
+                            message: template.jawaban,
+                            created_at: new Date().toISOString(),
+                        },
+                        false
+                    );
+                    scrollToBottom(true);
+                }, 750);
+            };
+            buttonWrapper.appendChild(button);
+        });
+        templateContainer.appendChild(buttonWrapper);
+    }
 
-        const optimisticId = `optimistic_${Date.now()}`;
-        // Optimistic UI sudah ditangani di event submit / template click
+    async function sendMessage(messageText) {
+        if (!isLoggedIn || !messageText || !apiClient) return;
+        const optimisticId = `optimistic_${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(2, 9)}`;
+        displayMessage(
+            {
+                id: optimisticId,
+                sender_type: "user",
+                message: messageText,
+                created_at: new Date().toISOString(),
+                read_at: null,
+            },
+            false
+        );
+        scrollToBottom(true);
+        if (chatInputElement) chatInputElement.value = "";
 
         try {
             const response = await apiClient.post("/chat/send-user", {
                 message: messageText,
             });
             const serverMessageData = response.data.data;
-
-            // Update ID dan status pesan optimistic
-            const $optimisticMessage = $(`[data-message-id^="optimistic_"]`)
-                .filter(function () {
-                    return $(this).find(".message-body").text() === messageText;
-                })
-                .last(); // Gunakan jQuery jika tersedia untuk kemudahan seleksi
-
-            if ($optimisticMessage.length && serverMessageData) {
-                $optimisticMessage.attr(
-                    "data-message-id",
+            const optimisticMessageElement = chatMessagesElement?.querySelector(
+                `[data-message-id="${optimisticId}"]`
+            );
+            if (optimisticMessageElement && serverMessageData) {
+                optimisticMessageElement.dataset.messageId = String(
                     serverMessageData.id
                 );
-                $optimisticMessage
-                    .find(".read-indicator")
-                    .removeClass("bi-clock text-warning")
-                    .addClass("bi-check2");
-            } else {
-                console.warn(
-                    "[ChatUser] Could not find optimistic message to update or server data missing."
-                );
+                const timestampEl =
+                    optimisticMessageElement.querySelector(
+                        ".message-timestamp"
+                    );
+                const indicator =
+                    optimisticMessageElement.querySelector(".read-indicator");
+                if (timestampEl && indicator) {
+                    timestampEl.textContent =
+                        formatTimestamp(serverMessageData.created_at) + " ";
+                    indicator.classList.remove("fa-clock", "text-warning");
+                    indicator.classList.add("fa-check");
+                    timestampEl.appendChild(indicator);
+                }
+            } else if (!optimisticMessageElement && serverMessageData) {
+                displayMessage(serverMessageData, false);
             }
         } catch (error) {
             console.error(
-                "[ChatUser] Error sending message:",
+                "Send Message Error:",
                 error.response?.data || error.message || error
             );
-            $(`[data-message-id^="optimistic_"]`)
-                .filter(function () {
-                    return $(this).find(".message-body").text() === messageText;
-                })
-                .remove();
-            alert("Gagal mengirim pesan. Silakan coba lagi.");
-        }
-    }
-
-    async function markAdminMessagesAsRead() {
-        if (!isLoggedIn || !apiClient) return;
-        clearTimeout(markAsReadTimer); // Debounce
-        markAsReadTimer = setTimeout(async () => {
-            try {
-                await apiClient.post("/chat/mark-read");
-            } catch (error) {
-                console.error(
-                    "[ChatUser] Error marking admin messages as read:",
-                    error.response?.data || error.message || error
+            const failedMessageElement = chatMessagesElement?.querySelector(
+                `[data-message-id="${optimisticId}"]`
+            );
+            if (failedMessageElement) {
+                failedMessageElement.classList.add("message-failed");
+                const errorIndicator = document.createElement("i");
+                errorIndicator.classList.add(
+                    "fas",
+                    "fa-exclamation-circle",
+                    "text-danger",
+                    "ms-1"
                 );
+                failedMessageElement.querySelector(".read-indicator")?.remove();
+                failedMessageElement
+                    .querySelector(".message-timestamp")
+                    ?.appendChild(errorIndicator);
             }
-        }, 500); // Delay sedikit
+            if (chatInputElement) chatInputElement.value = messageText;
+        }
     }
 
-    // --- Echo Listener Function ---
-    function initializeUserEcho() {
-        if (!isLoggedIn || typeof window.Echo === "undefined") {
-            return;
-        }
-        if (userEchoChannel) {
-            return;
-        }
+    function setupEchoListener() {
+        if (!isLoggedIn || typeof window.Echo === "undefined") return;
+        if (echoChannel) return;
         const channelName = `private-chat.user.${currentUserId}`;
-
         try {
-            userEchoChannel = window.Echo.private(channelName);
-            userEchoChannel
+            echoChannel = window.Echo.private(channelName);
+            echoChannel
                 .subscribed(() => {
-                    console.log(`[Echo] Subscribed to ${channelName}`);
+                    console.log(`[Echo] User subscribed to ${channelName}`);
                 })
-                .listen(".message.sent", (event) => {
+                .listen(".message.sent", (eventData) => {
                     if (
-                        event.sender_type === "user" &&
-                        event.sender_id == currentUserId
-                    ) {
-                        const $optimisticMsg = $(
-                            `[data-message-id^="optimistic_"]`
-                        )
-                            .filter(function () {
-                                return (
-                                    $(this).find(".message-body").text() ===
-                                    event.message
-                                );
-                            })
-                            .last();
-                        if ($optimisticMsg.length) {
-                            $optimisticMsg.attr("data-message-id", event.id);
-                            $optimisticMsg
-                                .find(".read-indicator")
-                                .removeClass("bi-clock text-warning")
-                                .addClass("bi-check2");
-                        }
+                        eventData.sender_type === "user" &&
+                        eventData.sender_id == currentUserId
+                    )
                         return;
-                    }
-
-                    displayChatMessage(event);
-                    const isModalOpen =
-                        chatModalElement.classList.contains("show");
-
-                    if (isModalOpen) {
-                        scrollChatToBottom(true);
-                        if (event.sender_type === "admin")
+                    if (eventData.sender_type === "admin") {
+                        displayMessage(eventData, false);
+                        if (chatModalElement?.classList.contains("show")) {
+                            scrollToBottom(true);
                             markAdminMessagesAsRead();
-                    } else {
-                        unreadCount++;
-                        updateUnreadBadge();
-                        if (event.sender_type === "admin") {
-                            showBrowserNotification(
+                        } else {
+                            unreadMessagesCount++;
+                            updateChatIconBadge();
+                            showDesktopNotification(
                                 `Pesan baru dari ${
-                                    escapeHTML(event.sender_name) || "Admin"
+                                    sanitizeHTML(eventData.sender_name) ||
+                                    "Admin"
                                 }`,
-                                event.message
+                                eventData.message
                             );
                         }
                     }
                 })
-                .listen(".messages.read", (event) => {
-                    if (event.readerType === "admin") {
-                        updateUserMessagesReadStatus(event.lastReadMessageId);
+                .listen(".messages.read", (eventData) => {
+                    if (
+                        eventData.readerType === "admin" &&
+                        eventData.userId == currentUserId
+                    ) {
+                        updateReadIndicators(eventData.lastReadMessageId);
                     }
                 })
                 .error((error) => {
                     console.error(
-                        `[Echo] Subscription FAILED for ${channelName}`,
+                        `[Echo] User subscription FAILED for ${channelName}`,
                         JSON.stringify(error)
                     );
-                    userEchoChannel = null;
+                    echoChannel = null;
                 });
-        } catch (e) {
-            console.error("[ChatUser] Error initializing Echo:", e);
+        } catch (error) {
+            console.error(
+                `[ChatUser] Error subscribing Echo to ${channelName}:`,
+                error
+            );
+            echoChannel = null;
         }
     }
 
-    function updateUserMessagesReadStatus(lastReadMessageId) {
-        if (!chatMessagesContainer) return;
-        chatMessagesContainer
-            .querySelectorAll(".d-flex.justify-content-end .chat-bubble")
-            .forEach((bubble) => {
-                const msgDiv = bubble.closest("[data-message-id]");
-                if (!msgDiv) return;
-                const messageId = parseInt(msgDiv.dataset.messageId, 10);
-                const indicator = bubble.querySelector(".read-indicator");
+    function updateReadIndicators(lastReadMessageId) {
+        if (!chatMessagesElement) return;
+        const userMessages = chatMessagesElement.querySelectorAll(
+            ".d-flex.justify-content-end .chat-bubble"
+        );
+        userMessages.forEach((bubble) => {
+            const messageWrapper = bubble.closest("[data-message-id]");
+            if (!messageWrapper) return;
+            const messageIdStr = messageWrapper.dataset.messageId;
+            if (
+                typeof messageIdStr === "string" &&
+                messageIdStr.startsWith("optimistic_")
+            )
+                return;
+            const messageId = parseInt(messageIdStr, 10);
+            const readIndicator = bubble.querySelector(".read-indicator");
 
+            if (
+                readIndicator &&
+                !readIndicator.classList.contains("fa-check-double") &&
+                !readIndicator.classList.contains("fa-clock")
+            ) {
                 if (
-                    indicator &&
-                    !indicator.classList.contains("text-info") &&
-                    !indicator.classList.contains("bi-clock")
+                    !isNaN(messageId) &&
+                    (lastReadMessageId === null ||
+                        messageId <= lastReadMessageId)
                 ) {
-                    if (
-                        lastReadMessageId === null ||
-                        (messageId && messageId <= lastReadMessageId)
-                    ) {
-                        indicator.classList.remove("bi-check2");
-                        indicator.classList.add("bi-check2-all", "text-info");
-                    }
+                    readIndicator.classList.remove("fa-check");
+                    readIndicator.classList.add("fa-check-double", "text-info");
                 }
-            });
-    }
-
-    function showBrowserNotification(title, body) {
-        if (!("Notification" in window)) return;
-        if (Notification.permission === "granted") {
-            new Notification(title, { body: body, icon: "/img/logo-gpib.png" }); // Ganti path icon jika perlu
-        } else if (Notification.permission !== "denied") {
-            Notification.requestPermission().then((permission) => {
-                if (permission === "granted") {
-                    new Notification(title, {
-                        body: body,
-                        icon: "/img/logo-gpib.png",
-                    });
-                }
-            });
-        }
-    }
-
-    // --- Event Listeners ---
-    if (chatMessageForm && isLoggedIn) {
-        chatMessageForm.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const messageText = chatInput.value.trim();
-            if (messageText) {
-                displayChatMessage({
-                    id: `optimistic_${Date.now()}`,
-                    sender_type: "user",
-                    message: messageText,
-                    created_at: new Date().toISOString(),
-                    read_at: null,
-                });
-                scrollChatToBottom(true);
-                sendUserMessageToServer(messageText);
-                chatInput.value = "";
             }
         });
     }
 
+    function showDesktopNotification(title, body) {
+        if (!("Notification" in window) || Notification.permission === "denied")
+            return;
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body, icon: "/img/logo-gpib.png" });
+        } else {
+            Notification.requestPermission().then((p) => {
+                if (p === "granted")
+                    new Notification(title, {
+                        body: body,
+                        icon: "/img/logo-gpib.png",
+                    });
+            });
+        }
+    }
+
+    // --- Event Listeners Setup ---
+    if (chatMessageForm && isLoggedIn) {
+        chatMessageForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const messageText = chatInputElement?.value.trim();
+            if (messageText) sendMessage(messageText);
+        });
+    }
+
     chatModalElement.addEventListener("shown.bs.modal", () => {
-        unreadCount = 0;
-        updateUnreadBadge();
+        unreadMessagesCount = 0;
+        updateChatIconBadge();
+        if (templateContainer) templateContainer.innerHTML = "";
+        if (templateLoadingIndicator)
+            templateLoadingIndicator.style.display = "none";
         if (isLoggedIn) {
             currentPage = 1;
-            hasMoreHistory = true;
-            if (chatMessagesContainer) chatMessagesContainer.innerHTML = "";
+            hasMorePages = true;
+            isLoadingHistory = false;
+            if (chatMessagesElement) chatMessagesElement.innerHTML = "";
             if (chatLoadingIndicator)
                 chatLoadingIndicator.style.display = "flex";
             fetchHistory(1);
+            setupEchoListener();
         } else {
-            if (chatMessagesContainer) chatMessagesContainer.innerHTML = "";
+            if (chatMessagesElement) chatMessagesElement.innerHTML = "";
             if (chatLoadingIndicator)
                 chatLoadingIndicator.style.display = "none";
         }
-        fetchTemplates();
-        if (chatInput) chatInput.focus();
+        fetchAndDisplayTemplates();
+        if (isLoggedIn && chatInputElement) chatInputElement.focus();
     });
 
     chatModalElement.addEventListener("hidden.bs.modal", () => {
-        // Tidak leave channel Echo
-        const focusedElement = chatModalElement.querySelector(":focus");
-        if (focusedElement) focusedElement.blur();
+        chatModalElement.querySelector(":focus")?.blur();
     });
 
-    if (chatMessagesContainer && isLoggedIn) {
-        // Gunakan fungsi debounce yang sudah didefinisikan
-        chatMessagesContainer.addEventListener(
+    if (chatMessagesElement && isLoggedIn) {
+        const debounce = (func, delay) => {
+            let t;
+            return (...a) => {
+                clearTimeout(t);
+                t = setTimeout(() => func.apply(this, a), delay);
+            };
+        };
+        const handleScroll = () => {
+            if (
+                chatMessagesElement.scrollTop <= 5 &&
+                hasMorePages &&
+                !isLoadingHistory
+            ) {
+                fetchHistory(currentPage + 1);
+            }
+        };
+        chatMessagesElement.addEventListener(
             "scroll",
-            debounce(() => {
-                if (
-                    chatMessagesContainer.scrollTop === 0 &&
-                    hasMoreHistory &&
-                    !isLoadingHistory
-                ) {
-                    fetchHistory(currentPage + 1);
-                }
-            }, 300)
-        ); // Panggil debounce di sini
+            debounce(handleScroll, 300)
+        );
     }
-
-    // --- Inisialisasi Awal ---
-    initializeUserEcho(); // Inisialisasi Echo di awal jika user login
-}); // Akhir DOMContentLoaded
+});
