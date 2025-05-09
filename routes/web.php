@@ -11,6 +11,7 @@ use App\Http\Controllers\RenunganController;
 use App\Http\Controllers\TemplateTanyaJawabController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\UserAuthController;
+use App\Http\Controllers\WartaJemaatController;
 use Illuminate\Support\Facades\Route;
 
 Route::controller(UserAuthController::class)->group(function () {
@@ -120,6 +121,10 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
         return view('dashboard.pendeta.index');
     })->name('dashboard.pendeta');
 
+    Route::get('warta_jemaat', function () {
+        return view('dashboard.warta_jemaat.index');
+    })->name('dashboard.warta_jemaat');
+
     Route::get('admin', function () {
         return view('dashboard.admin.index');
     })->name('dashboard.admin');
@@ -156,6 +161,13 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
         Route::get('/pendeta/edit_pendeta/{pendeta}', 'edit');
         Route::put('/pendeta/update_pendeta/{pendeta}', 'update');
         Route::delete('/pendeta/hapus_pendeta/{pendeta}', 'destroy');
+    });
+    Route::controller(WartaJemaatController::class)->group(function () {
+        Route::get('/warta_jemaat/wartaJemaatTable', 'index')->name('index');
+        Route::post('/warta_jemaat/simpan_warta_jemaat', 'store')->name('store');
+        Route::get('/warta_jemaat/edit_warta_jemaat/{wartaJemaat}', 'edit')->name('edit');
+        Route::put('/warta_jemaat/update_warta_jemaat/{wartaJemaat}', 'update')->name('update');
+        Route::delete('/warta_jemaat/hapus_warta_jemaat/{wartaJemaat}', 'destroy')->name('destroy');
     });
     Route::controller(AdminController::class)->group(function () {
         Route::get('/admin/adminTable', 'index');

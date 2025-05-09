@@ -28,6 +28,10 @@
                     <a class="nav-link {{ Route::is('renungan*') ? 'active' : '' }}" href="{{ route('renungan') }}"
                         @if (Route::is('renungan*')) aria-current="page" @endif>Renungan</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ Route::is('renungan*') ? 'active' : '' }}" href="{{ route('renungan') }}"
+                        @if (Route::is('renungan*')) aria-current="page" @endif>Warta Jemaat</a>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {{ Route::is('info*') ? 'active' : '' }}" href="#"
                         role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -41,6 +41,13 @@
             <span>Pendeta & Majelis</span></a>
     </li>
 
+    <li class="nav-item {{ Route::is('dashboard.warta_jemaat') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('dashboard.warta_jemaat') }}"
+            @if (Route::is('dashboard.warta_jemaat')) aria-current="page" @endif>
+            <i class="fas fa-fw fa-newspaper"></i>
+            <span>Warta Jemaat</span></a>
+    </li>
+
     <li class="nav-item {{ Route::is('dashboard.tanya_jawab') ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('dashboard.tanya_jawab') }}"
             @if (Route::is('dashboard.tanya_jawab')) aria-current="page" @endif>
