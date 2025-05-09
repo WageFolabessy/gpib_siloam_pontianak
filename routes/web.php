@@ -10,6 +10,7 @@ use App\Http\Controllers\PendetaController;
 use App\Http\Controllers\RenunganController;
 use App\Http\Controllers\TemplateTanyaJawabController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\TataIbadahController;
 use App\Http\Controllers\UserAuthController;
 use App\Http\Controllers\WartaJemaatController;
 use Illuminate\Support\Facades\Route;
@@ -124,6 +125,10 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
     Route::get('warta_jemaat', function () {
         return view('dashboard.warta_jemaat.index');
     })->name('dashboard.warta_jemaat');
+    
+    Route::get('tata_ibadah', function () {
+        return view('dashboard.tata_ibadah.index');
+    })->name('dashboard.tata_ibadah');
 
     Route::get('admin', function () {
         return view('dashboard.admin.index');
@@ -168,6 +173,13 @@ Route::middleware(['auth:admin_users'])->prefix('dashboard')->group(function () 
         Route::get('/warta_jemaat/edit_warta_jemaat/{wartaJemaat}', 'edit')->name('edit');
         Route::put('/warta_jemaat/update_warta_jemaat/{wartaJemaat}', 'update')->name('update');
         Route::delete('/warta_jemaat/hapus_warta_jemaat/{wartaJemaat}', 'destroy')->name('destroy');
+    });
+    Route::controller(TataIbadahController::class)->group(function () {
+        Route::get('/tata_ibadah/tataIbadahTable', 'index')->name('index');
+        Route::post('/tata_ibadah/simpan_tata_ibadah', 'store')->name('store');
+        Route::get('/tata_ibadah/edit_tata_ibadah/{tataIbadah}', 'edit')->name('edit');
+        Route::put('/tata_ibadah/update_tata_ibadah/{tataIbadah}', 'update')->name('update');
+        Route::delete('/tata_ibadah/hapus_tata_ibadah/{tataIbadah}', 'destroy')->name('destroy');
     });
     Route::controller(AdminController::class)->group(function () {
         Route::get('/admin/adminTable', 'index');

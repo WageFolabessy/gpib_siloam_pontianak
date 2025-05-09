@@ -48,6 +48,13 @@
             <span>Warta Jemaat</span></a>
     </li>
 
+    <li class="nav-item {{ Route::is('dashboard.tata_ibadah') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('dashboard.tata_ibadah') }}"
+            @if (Route::is('dashboard.tata_ibadah')) aria-current="page" @endif>
+            <i class="fas fa-fw fa-praying-hands"></i>
+            <span>Tata Ibadah</span></a>
+    </li>
+
     <li class="nav-item {{ Route::is('dashboard.tanya_jawab') ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('dashboard.tanya_jawab') }}"
             @if (Route::is('dashboard.tanya_jawab')) aria-current="page" @endif>

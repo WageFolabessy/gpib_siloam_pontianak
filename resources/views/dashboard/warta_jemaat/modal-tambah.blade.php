@@ -14,10 +14,7 @@
             </div>
             <div class="modal-body">
                 <form id="wartaForm" name="wartaForm" enctype="multipart/form-data">
-                    {{-- ID untuk update --}}
                     <input type="hidden" name="warta_id" id="warta_id">
-                    {{-- Method spoofing untuk update (otomatis dihandle JS jika pakai FormData dan POST) --}}
-                    {{-- <input type="hidden" name="_method" id="form_method_warta"> --}}
 
                     <div class="alert alert-danger d-none" id="error-alert-warta" role="alert"></div>
 
