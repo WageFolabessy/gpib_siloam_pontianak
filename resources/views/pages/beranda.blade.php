@@ -71,7 +71,7 @@
                     dan mereka duduk makan di dalam Kerajaan Allah”
                 </p>
             </blockquote>
-            <figcaption class="blockquote-footer mt-2 speakable">
+            <figcaption class="blockquote-footer mt-2 speakable text-white">
                 Lukas 13:29
             </figcaption>
         </figure>

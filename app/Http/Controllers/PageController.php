@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\JadwalIbadah;
 use App\Models\Renungan;
 use App\Models\Pendeta;
+use App\Models\TataIbadah;
+use App\Models\WartaJemaat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -86,5 +88,23 @@ class PageController extends Controller
             ->get();
 
         return view('pages.info', compact('pengurus'));
+    }
+
+    public function wartaJemaat(): View
+    {
+        $wartas = WartaJemaat::where('is_published', true)
+            ->orderBy('tanggal_terbit', 'desc')
+            ->paginate(10);
+
+        return view('pages.warta-jemaat', compact('wartas'));
+    }
+    
+    public function tataIbadah(): View
+    {
+        $tataIbadahs = TataIbadah::where('is_published', true)
+            ->orderBy('tanggal_terbit', 'desc')
+            ->paginate(10);
+
+        return view('pages.tata-ibadah', compact('tataIbadahs'));
     }
 }

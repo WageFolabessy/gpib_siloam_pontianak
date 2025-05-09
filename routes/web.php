@@ -9,7 +9,6 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PendetaController;
 use App\Http\Controllers\RenunganController;
 use App\Http\Controllers\TemplateTanyaJawabController;
-use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\TataIbadahController;
 use App\Http\Controllers\UserAuthController;
 use App\Http\Controllers\WartaJemaatController;
@@ -46,6 +45,9 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/renungan/{renungan:slug}', 'detailRenungan')->name('detail-renungan');
 
     Route::get('/info', 'info')->name('info');
+
+    Route::get('/warta-jemaat', [PageController::class, 'wartaJemaat'])->name('warta-jemaat');
+    Route::get('/tata-ibadah', [PageController::class, 'tataIbadah'])->name('tata-ibadah');
 });
 
 

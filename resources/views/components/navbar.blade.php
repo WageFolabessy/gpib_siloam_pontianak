@@ -29,8 +29,12 @@
                         @if (Route::is('renungan*')) aria-current="page" @endif>Renungan</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ Route::is('renungan*') ? 'active' : '' }}" href="{{ route('renungan') }}"
-                        @if (Route::is('renungan*')) aria-current="page" @endif>Warta Jemaat</a>
+                    <a class="nav-link {{ Route::is('warta-jemaat*') ? 'active' : '' }}" href="{{ route('warta-jemaat') }}"
+                        @if (Route::is('warta-jemaat*')) aria-current="page" @endif>Warta Jemaat</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ Route::is('tata-ibadah*') ? 'active' : '' }}" href="{{ route('tata-ibadah') }}"
+                        @if (Route::is('tata-ibadah*')) aria-current="page" @endif>Tata Ibadah</a>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {{ Route::is('info*') ? 'active' : '' }}" href="#"
