@@ -24,6 +24,16 @@ document.addEventListener("DOMContentLoaded", () => {
             url: "/renungan",
             feedback: "Membuka Renungan...",
         },
+        NAV_WARTA: {
+            keywords: ["warta", "jemaat"],
+            url: "/warta-jemaat",
+            feedback: "Membuka Warta Jemaat...",
+        },
+        NAV_TATA_IBADAH: {
+            keywords: ["tata", "tata ibadah"],
+            url: "/tata-ibadah",
+            feedback: "Membuka Tata Ibadah...",
+        },
         NAV_INFO: {
             keywords: ["info", "informasi", "tentang"],
             url: "/info",

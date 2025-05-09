@@ -6,8 +6,13 @@
 
 @section('style')
     <style>
-        .speakable {
-            cursor: pointer;
+        .speakable-highlight {
+            background-color: #fff3cd !important;
+            color: #0a3678;
+            border-radius: 0.25rem;
+            padding: 0.15rem 0.25rem;
+            box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
         }
 
         .card-header.bg-tataIbadah {
@@ -57,14 +62,17 @@
                                 </h6>
                             </div>
                             <div class="card-footer bg-transparent border-top-0 text-center pb-3">
-                                @if ($tataIbadah->file_pdf_path && Illuminate\Support\Facades\Storage::disk('public')->exists($tataIbadah->file_pdf_path))
+                                @if (
+                                    $tataIbadah->file_pdf_path &&
+                                        Illuminate\Support\Facades\Storage::disk('public')->exists($tataIbadah->file_pdf_path))
                                     <a href="{{ Illuminate\Support\Facades\Storage::url($tataIbadah->file_pdf_path) }}"
                                         class="btn btn-primary btn-sm btn-tataIbadah-action" target="_blank"
                                         rel="noopener noreferrer">
                                         <i class="fas fa-eye me-1"></i> Lihat PDF
                                     </a>
                                     <a href="{{ Illuminate\Support\Facades\Storage::url($tataIbadah->file_pdf_path) }}"
-                                        class="btn btn-success btn-sm btn-tataIbadah-action" download="{{ $tataIbadah->slug }}.pdf">
+                                        class="btn btn-success btn-sm btn-tataIbadah-action"
+                                        download="{{ $tataIbadah->slug }}.pdf">
                                         <i class="fas fa-download me-1"></i> Unduh PDF
                                     </a>
                                 @else
@@ -86,4 +94,5 @@
 @endsection
 
 @section('script')
+    <script src="{{ asset('assets/pages/js/speechsynthesis/tata-ibadah.js') }}"></script>
 @endsection
