@@ -6,8 +6,13 @@
 
 @section('style')
     <style>
-        .speakable {
-            cursor: pointer;
+        .speakable-highlight {
+            background-color: #fff3cd !important;
+            color: #0a3678;
+            border-radius: 0.25rem;
+            padding: 0.15rem 0.25rem;
+            box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
         }
 
         .card-header.bg-chocolate {
