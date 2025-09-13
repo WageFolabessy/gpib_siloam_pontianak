@@ -11,38 +11,76 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      # Langkah 1: Checkout kode dari repo PENGEMBANGAN saat ini
+      # Langkah 1: Checkout kode dari repo PENGEMBANGAN
       - name: Checkout Dev Repo (gpib_siloam_pontianak)
         uses: actions/checkout@v4
         with:
           path: 'dev-repo'
+          # Ambil semua riwayat untuk bisa membandingkan commit
+          fetch-depth: 0
 
-      # Langkah 2: Checkout kode dari repo PRODUKSI (church-information-system)
+      # Langkah 2: Checkout kode dari repo PRODUKSI
       - name: Checkout Prod Repo (church-information-system)
         uses: actions/checkout@v4
         with:
           repository: 'GasNative/church-information-system'
           token: ${{ secrets.PAT_FOR_PROD_REPO }}
           path: 'prod-repo'
+          fetch-depth: 0
 
-      # Langkah 3: Sinkronisasi file, KECUALI file/folder konfigurasi produksi
+      # Langkah 3: Kumpulkan pesan commit baru dari repo pengembangan
+      - name: Get New Commit Details from Dev Repo
+        id: get_commits
+        shell: bash
+        run: |
+          cd prod-repo
+          # Cari hash commit terakhir dari dev yang pernah kita sync sebelumnya
+          # Pola pesannya adalah "Sync from dev repo at commit [hash]"
+          LAST_SYNCED_HASH=$(git log -1 --grep="Sync from dev repo at commit" --pretty=%B | grep -oE "[a-f0-9]{40}" || echo "")
+          cd ../dev-repo
+
+          COMMIT_MESSAGES=""
+          if [ -n "$LAST_SYNCED_HASH" ]; then
+            echo "Last sync was at dev commit: $LAST_SYNCED_HASH"
+            # Ambil semua pesan commit SETELAH commit terakhir yang di-sync
+            COMMIT_MESSAGES=$(git log --reverse --pretty="* %s (%h)" $LAST_SYNCED_HASH..HEAD)
+          else
+            echo "No previous sync found. Grabbing last 10 commit messages."
+            COMMIT_MESSAGES=$(git log -10 --reverse --pretty="* %s (%h)")
+          fi
+
+          # Simpan pesan commit dan hash terbaru untuk digunakan di langkah selanjutnya
+          echo "commit_summary<<EOF" >> $GITHUB_OUTPUT
+          echo -e "Includes the following changes from development:\n\n$COMMIT_MESSAGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "latest_dev_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      # Langkah 4: Sinkronisasi file (tetap menggunakan rsync untuk keamanan)
       - name: Sync Files from Dev to Prod
         run: |
-          # PENTING: Tambahkan file/folder yang tidak ingin ditimpa dari repo dev
-          # Contoh: --exclude='Dockerfile' --exclude='file-penting.yml'
+          # PENTING: Tambahkan file/folder yang tidak ingin ditimpa di sini
           rsync -av --delete --exclude='.git/' --exclude='.github/' dev-repo/ prod-repo/
 
-      # Langkah 4: Commit dan Push perubahan ke repo PRODUKSI
+      # Langkah 5: Commit dan Push dengan pesan yang lebih detail
       - name: Commit and Push to Prod Repository
         run: |
           cd prod-repo
+          # Cek jika tidak ada perubahan file, hentikan proses
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to sync."
+            exit 0
+          fi
+          
           git config --global user.name 'GitHub Action Sync'
           git config --global user.email 'action@github.com'
-          # Cek apakah ada perubahan file sebelum commit
-          if ! git diff --quiet; then
-            git add .
-            git commit -m "chore: Sync updates from WageFolabessy/gpib_siloam_pontianak"
-            git push
-          else
-            echo "No changes to sync."
-          fi
+          
+          git add .
+          
+          # Buat pesan commit yang detail
+          COMMIT_TITLE="chore: Sync updates from development repository"
+          COMMIT_BODY="${{ steps.get_commits.outputs.commit_summary }}"
+          COMMIT_FOOTER="Sync from dev repo at commit ${{ steps.get_commits.outputs.latest_dev_hash }}"
+          
+          # Lakukan commit dengan judul, isi (body), dan catatan kaki (footer)
+          git commit -m "$COMMIT_TITLE" -m "$COMMIT_BODY" -m "$COMMIT_FOOTER"
+          git push
