@@ -1,0 +1,48 @@
+# Nama workflow
+name: Sync to Production Repository
+
+# Pemicu: Berjalan setiap ada push ke branch 'main'
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # Langkah 1: Checkout kode dari repo PENGEMBANGAN saat ini
+      - name: Checkout Dev Repo (gpib_siloam_pontianak)
+        uses: actions/checkout@v4
+        with:
+          path: 'dev-repo'
+
+      # Langkah 2: Checkout kode dari repo PRODUKSI (church-information-system)
+      - name: Checkout Prod Repo (church-information-system)
+        uses: actions/checkout@v4
+        with:
+          repository: 'GasNative/church-information-system'
+          token: ${{ secrets.PAT_FOR_PROD_REPO }}
+          path: 'prod-repo'
+
+      # Langkah 3: Sinkronisasi file, KECUALI file/folder konfigurasi produksi
+      - name: Sync Files from Dev to Prod
+        run: |
+          # PENTING: Tambahkan file/folder yang tidak ingin ditimpa dari repo dev
+          # Contoh: --exclude='Dockerfile' --exclude='file-penting.yml'
+          rsync -av --delete --exclude='.git/' --exclude='.github/' dev-repo/ prod-repo/
+
+      # Langkah 4: Commit dan Push perubahan ke repo PRODUKSI
+      - name: Commit and Push to Prod Repository
+        run: |
+          cd prod-repo
+          git config --global user.name 'GitHub Action Sync'
+          git config --global user.email 'action@github.com'
+          # Cek apakah ada perubahan file sebelum commit
+          if ! git diff --quiet; then
+            git add .
+            git commit -m "chore: Sync updates from WageFolabessy/gpib_siloam_pontianak"
+            git push
+          else
+            echo "No changes to sync."
+          fi
