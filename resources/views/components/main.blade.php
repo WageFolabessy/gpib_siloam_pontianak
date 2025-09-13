@@ -166,7 +166,7 @@
 
     <button type="button" class="btn btn-brown rounded-circle" id="speech-rec-toggle" title="Aktifkan Perintah Suara"
         aria-label="Kontrol Perintah Suara">
-        <i class="fas fa-microphone-slash"></i> {{-- Ikon awal --}}
+        <i class="fas fa-microphone-slash"></i> 
     </button>
     <span id="speech-rec-status" class="visually-hidden">Perintah Suara Nonaktif</span>
 
