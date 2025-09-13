@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="garisAs" content="projek">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>GPIB SILOAM PONTIANAK @yield('title')</title>
+    <title>GPIB Jemaat Siloam Pontianak @yield('title')</title>
     <link rel="shortcut icon" href="{{ asset('assets/pages/img/logo.png') }}">
     <link rel="stylesheet" href="{{ asset('assets/pages/css/bootstrap.min.css') }}">
     <link href="{{ asset('assets/dashboard/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
