@@ -16,5 +16,11 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(1)->create();
         AdminUser::factory(1)->create();
+        $this->call([
+            RenunganSeeder::class,
+            JadwalIbadahSeeder::class,
+            PendetaSeeder::class,
+            TemplateTanyaJawabSeeder::class,
+        ]);
     }
 }
