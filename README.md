@@ -7,60 +7,66 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+# GPIB Siloam Pontianak
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Aplikasi web berbasis Laravel untuk jemaat GPIB Jemaat “Siloam” Pontianak. Situs ini menyajikan renungan rohani, jadwal ibadah, arsip warta jemaat, tata ibadah, informasi gereja, serta fitur interaktif seperti live chat dan aksesibilitas text-to-speech (TTS) dan navigasi suara.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Ringkasan Fitur
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Konten Publik
+  - Beranda: menampilkan highlight Renungan terbaru.
+  - Renungan:
+    - Daftar renungan dengan tombol “Muat Lebih Banyak” (AJAX).
+    - Halaman detail dengan navigasi “Sebelumnya/Berikutnya”, gambar thumbnail, serta kontrol TTS (play/pause/stop).
+  - Jadwal Ibadah: daftar jadwal sesuai kategori.
+  - Warta Jemaat: arsip warta yang dapat dilihat/diunduh (PDF).
+  - Tata Ibadah: daftar tata ibadah (PDF) untuk diunduh.
+  - Info Gereja: sejarah, visi-misi, serta daftar pendeta yang melayani.
 
-## Learning Laravel
+- Aksesibilitas & Interaksi
+  - Text-to-Speech: membaca konten penting (judul, isi renungan, dll) dengan highlight dinamis.
+  - Navigasi Suara (Speech Recognition): perintah suara sederhana untuk membuka halaman seperti “beranda”, “jadwal ibadah”, “renungan”, “warta jemaat”, “tata ibadah”, dan “info”.
+  - Live Chat:
+    - Tamu (belum login): dapat mengirim pesan dari template, riwayat tidak disimpan.
+    - Jemaat (login): riwayat percakapan tersimpan, dapat mengirim/terima pesan, dan admin dapat menandai pesan terbaca.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Autentikasi Jemaat
+  - Registrasi, login, logout.
+  - Lupa/Reset password (menggunakan broker Laravel).
+  - Profil pengguna: ubah nama, email, dan password.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- Dashboard Admin
+  - Renungan:
+    - CRUD dengan editor WYSIWYG (Summernote), upload thumbnail, validasi sisi server/klien.
+    - Tabel DataTables (server-side) untuk pencarian, paging, urut.
+  - Jadwal Ibadah: CRUD dengan DataTables server-side.
+  - Warta Jemaat:
+    - CRUD, unggah PDF (dengan validasi ukuran/tipe), status publish (Draft/Published).
+  - Tata Ibadah: CRUD + unggah PDF.
+  - Template Tanya Jawab: CRUD untuk bank template chat.
+  - Data Pendeta: CRUD data pengurus/pelayan.
+  - Admin Users: kelola akun admin.
+  - Jemaat: kelola data jemaat (hapus, dsb).
+  - Seluruh aksi CRUD memanfaatkan AJAX, feedback notifikasi, dan inisialisasi tooltip dinamis.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Teknologi yang Digunakan
 
-## Laravel Sponsors
+- Backend
+  - Laravel (konfigurasi modern bootstrap/app.php)
+  - Eloquent ORM
+  - Guard terpisah: web (jemaat) dan admin_users (admin)
+  - Yajra DataTables (server-side processing)
+  - Validasi via Form Request, Reset Password Broker Laravel
+  - Penyimpanan berkas melalui Storage (disk public)
+  - Broadcasting/Realtime Chat: Laravel Broadcasting (driver Pusher) untuk event MessageSent, MessagesMarkedAsRead
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- Frontend
+  - Blade Template
+  - Bootstrap 5.3, Font Awesome
+  - jQuery 3.7
+  - DataTables
+  - Summernote (WYSIWYG)
+  - SweetAlert2 (konfirmasi/alert di beberapa modul)
+  - Web Speech API (SpeechSynthesis & SpeechRecognition) untuk TTS & navigasi suara
+  - Vite untuk bundling aset
+  - Realtime Chat: Laravel Echo + Pusher (Laravel Pusher) untuk pesan live, notifikasi, dan
