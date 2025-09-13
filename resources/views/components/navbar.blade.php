@@ -1,9 +1,9 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top border-bottom shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{{ route('beranda') }}">
-            <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo GPIB Siloam Pontianak" width="60"
+            <img src="{{ asset('assets/pages/img/logo-80.png') }}" alt="Logo Sistem Informasi Gereja" width="60"
                 height="60" class="d-inline-block align-middle me-2">
-            <span class="d-none d-sm-inline">GPIB SILOAM PONTIANAK</span>
+            <span class="d-none d-sm-inline">SISTEM INFORMASI GEREJA</span>
             <span class="d-inline d-sm-none">GPIB SILOAM</span>
         </a>
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="garisAs" content="projek" />
-    <title>GPIB SILOAM PONTIANAK @yield('title')</title>
+    <title>SISTEM INFORMASI GEREJA @yield('title')</title>
     {{-- CSRF --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Favicon --}}

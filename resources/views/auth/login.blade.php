@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GPIB SILOAM PONTIANAK - Admin Login</title>
+    <title>SISTEM INFORMASI GEREJA - Admin Login</title>
     <link rel="shortcut icon" href="{{ asset('assets/pages/img/logo.png') }}" />
     <link rel="stylesheet" href="{{ asset('assets/pages/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/pages/css/auth.css') }}" />
@@ -31,8 +31,8 @@
             <div class="col-lg-6 col-md-8 col-sm-10">
                 <div class="card shadow-lg border-0">
                     <div class="card-header bg-light text-center py-4 border-0">
-                        <img src="{{ asset('assets/pages/img/logo.png') }}" alt="Logo GPIB Siloam Pontianak" class="logo mb-2" />
-                        <h1 class="h4 text-dark fw-bold mb-0">ADMIN LOGIN<br>GPIB SILOAM PONTIANAK</h1>
+                        <img src="{{ asset('assets/pages/img/logo.png') }}" alt="Logo Sistem Informasi Gereja" class="logo mb-2" />
+                        <h1 class="h4 text-dark fw-bold mb-0">ADMIN LOGIN<br>SISTEM INFORMASI GEREJA</h1>
                     </div>
 
                     <div class="card-body p-4 p-md-5">
@@ -99,7 +99,7 @@
                     </div>
 
                     <div class="card-footer bg-light text-center py-3 border-0">
-                         <small class="text-muted">GPIB Siloam Pontianak &copy; {{ date('Y') }}</small>
+                         <small class="text-muted">Sistem Informasi Gereja &copy; {{ date('Y') }}</small>
                     </div>
                 </div>
             </div>

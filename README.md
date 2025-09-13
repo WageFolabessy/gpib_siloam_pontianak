@@ -7,7 +7,7 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-# GPIB Siloam Pontianak
+# Sistem Informasi Gereja
 
 Aplikasi web berbasis Laravel untuk jemaat GPIB Jemaat “Siloam” Pontianak. Situs ini menyajikan renungan rohani, jadwal ibadah, arsip warta jemaat, tata ibadah, informasi gereja, serta fitur interaktif seperti live chat dan aksesibilitas text-to-speech (TTS) dan navigasi suara.
 

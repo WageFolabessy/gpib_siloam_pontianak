@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>GPIB SILOAM PONTIANAK @yield('auth-title')</title>
+    <title>SISTEM INFORMASI GEREJA @yield('auth-title')</title>
     <link rel="shortcut icon" href="{{ asset('assets/pages/img/logo.png') }}" />
     <link rel="stylesheet" href="{{ asset('assets/pages/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/dashboard/vendor/fontawesome-free/css/all.min.css') }}">
@@ -19,9 +19,9 @@
                 <div class="col-lg-6 col-md-8 col-sm-10 col-12">
                     <div class="card shadow-lg border-0 rounded-3 overflow-hidden">
                         <div class="card-header bg-white text-center border-0 py-4">
-                            <img src="{{ asset('assets/pages/img/logo.png') }}" alt="Logo GPIB Siloam Pontianak"
+                            <img src="{{ asset('assets/pages/img/logo.png') }}" alt="Logo Sistem Informasi Gereja"
                                 class="mb-3" style="max-height: 70px;" />
-                            <h3 class="mb-0 text-dark fw-light">GPIB SILOAM PONTIANAK</h3>
+                            <h3 class="mb-0 text-dark fw-light">SISTEM INFORMASI GEREJA</h3>
                             <h4 class="text-muted fw-light mt-1">@yield('auth-title')</h4>
                         </div>
 

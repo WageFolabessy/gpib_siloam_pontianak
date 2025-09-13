@@ -63,7 +63,7 @@
 @section('content')
     {{-- COVER --}}
     <header id="autoSpeak" class="text-center p-5 mb-4 bg-white shadow-sm speakable">
-        <h1 class="display-5 fw-bold">- GPIB SILOAM PONTIANAK -</h1>
+        <h1 class="display-5 fw-bold">- SISTEM INFORMASI GEREJA -</h1>
         <figure class="mt-4">
             <blockquote class="blockquote fs-5">
                 <p>
